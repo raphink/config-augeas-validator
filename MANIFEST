@@ -1,7 +1,7 @@
 bin/augeas-validator
 Build.PL
 ChangeLog
-examples/augeas-validator.ini
+examples/sudo.ini
 lib/Config/Augeas/Validator.pm
 Makefile.PL
 MANIFEST
@@ -9,4 +9,5 @@ META.yml
 README
 t/00-load.t
 t/01-init.t
+t/02-run-examples.t
 t/pod.t
