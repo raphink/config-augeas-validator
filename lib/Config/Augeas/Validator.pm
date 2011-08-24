@@ -74,6 +74,7 @@ sub init_augeas {
 sub play_all {
    my ($self, @files) = @_;
    for my $file (@files) {
+      die "E: No such file $file\n" unless (-e $file);
       $self->set_aug_file($file);
       for my $rule (@{$self->{rules}}) {
          $self->play_rule($rule, $file);
