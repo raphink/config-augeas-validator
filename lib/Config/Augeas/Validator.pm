@@ -126,21 +126,37 @@ sub play_rule {
    assert_notempty('value', $value);
    my $explanation = $self->{cfg}->val($rule, 'explanation');
    $explanation ||= '';
+   my $level = $self->{cfg}->val($rule, 'level');
+   $level ||= 'error';
 
-   $self->assert($name, $type, $expr, $value, $file, $explanation);
+   $self->assert($name, $type, $expr, $value, $file, $explanation, $level);
+}
+
+
+sub print_error {
+   my ($level, $file, $msg, $explanation) = @_;
+
+   print "$level: File $file\n";
+   print "$level: $msg";
+   print "   $explanation.\n";
 }
 
 
 sub assert {
-   my ($self, $name, $type, $expr, $value, $file, $explanation) = @_;
+   my ($self, $name, $type, $expr, $value, $file, $explanation, $level) = @_;
 
    if ($type eq 'count') {
       my $count = $self->{aug}->count_match("$expr");
       if ($count != $value) {
-         print "E: File $file\n";
-         print "E: Assertion '$name' of type $type returned $count for file $file, expected $value:\n";
-	 print "   $explanation.\n";
-	 $self->{err} = $self->{err_code};
+         my $msg = "Assertion '$name' of type $type returned $count for file $file, expected $value:\n";
+         if ($level eq "error") {
+            print_error("E", $file, $msg, $explanation);
+	    $self->{err} = $self->{err_code};
+         } elsif ($level eq "warning") {
+            print_error("W", $file, $msg, $explanation);
+         } else {
+            die "E: Unknown level $level for assertion '$name'\n";
+         }
       }
    } else {
       die "E: Unknown type '$type'\n";
@@ -243,6 +259,13 @@ The value expected for the test. For example, if using the count type, the numbe
 
 C<value=1>
 
+=item B<level>
+
+The importance level of the test. Possible values are 'error' (default) and 'warning'.
+When set to 'error', a failed test will interrupt the processing and set the return code.
+When set to 'warning', a failed test will display a warning, continue, and have no effect on the return code.
+
+C<level=warning>
 
 =back
 
