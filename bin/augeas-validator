@@ -62,6 +62,7 @@ __END__
       -help brief help message
       -man full documentation
       -verbose be verbose
+      -conf <conffile> specify which configuration file to use
 
 =head1 OPTIONS
 
