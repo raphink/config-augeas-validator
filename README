@@ -1,0 +1,12 @@
+NAME
+       Config::Augeas::Validator - A generic configuration validator API
+
+SYNOPSIS
+       use Config::Augeas::Validator;
+
+       # Initialize
+       my $validator = Config::Augeas::Validator->new(conf => $conffile);
+
+       $validator->play_all(@files);
+       exit $validator->{err};
+

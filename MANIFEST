@@ -1,0 +1,12 @@
+bin/augeas-validator
+Build.PL
+ChangeLog
+examples/augeas-validator.ini
+lib/Config/Augeas/Validator.pm
+Makefile.PL
+MANIFEST
+META.yml
+README
+t/00-load.t
+t/01-init.t
+t/pod.t
