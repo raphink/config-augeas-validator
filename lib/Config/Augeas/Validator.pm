@@ -91,6 +91,11 @@ sub set_aug_file {
    my $aug = $self->{aug};
    my $lens = $self->{lens};
 
+
+   if ($aug->count_match("/augeas/load/$lens/lens") == 0) {
+      # Lenses with no autoload xfm => bet on lns
+      $aug->set("/augeas/load/$lens/lens", "$lens.lns");
+   }
    $aug->rm("/augeas/load/$lens/incl");
    $aug->set("/augeas/load/$lens/incl", $absfile);
    $aug->defvar('file', "/files$absfile");
