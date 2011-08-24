@@ -171,3 +171,84 @@ __END__
    exit $validator->{err};
 
 
+=head1 CONFIGURATION
+
+The B<Config::Augeas::Validator> configuration files are INI files.
+
+=head2 DEFAULT SECTION
+
+The B<DEFAULT> section is mandatory. It contains the following variables:
+
+=over 8
+
+=item B<rules>
+
+The ordered list of the rules to run, separated with commas, for example:
+
+C<rules=app_type, ai_bo_auth, dr_auth>
+
+=item B<lens>
+
+The name of the lens to use, for example:
+
+C<lens=Httpd>
+
+=item B<err_code>
+
+The exit code to return when a test fails. This parameter is optional. Example:
+
+C<err_code=3>
+
+=back
+
+=head2 RULES
+
+Each section apart from the B<DEFAULT> section defines a rule, as listed in the B<rules> variable of the B<DEFAULT> section. Each rule contains several parameters.
+
+=over 8
+
+=item B<name>
+
+The rule description, for example:
+
+C<name=Application Type>
+
+=item B<explanation>
+
+The explanation for the rule, for example:
+
+C<explanation=Check that application type is FOO or BAR>
+
+=item B<type>
+
+The type of rule. For now, B<Config::Augeas::Validator> only supports the B<count> type, which returns the count nodes matching B<expr>. Example:
+
+C<type=count>
+
+=item B<expr>
+
+The B<Augeas> expression for the rule. The C<$file> variable is the path to the file in the B<Augeas> tree. Example:
+
+C<expr=$file/VirtualHost[#comment =~ regexp("^1# +((AI|BO)\+?|DR)$")]>
+
+=item B<value>
+
+The value expected for the test. For example, if using the count type, the number of matches expected for the expression. Example:
+
+C<value=1>
+
+
+=back
+
+
+=head1 SEE ALSO
+
+L<Config::Augeas>
+
+=head1 FILES
+
+F<augeas-validator.ini>
+    The default configuration file for B<Config::Augeas::Validator>.
+
+=cut
+
