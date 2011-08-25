@@ -23,7 +23,7 @@ use base qw(Class::Accessor);
 use Config::Augeas qw(get count_match print);
 use Config::IniFiles;
 
-our $VERSION = '0.0.1';
+our $VERSION = '0.101';
 
 sub new {
    my $class = shift;
