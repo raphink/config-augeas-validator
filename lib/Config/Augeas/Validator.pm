@@ -105,8 +105,8 @@ sub set_aug_file {
    my $err_path = "/augeas/files$absfile/error";
    my $err = $aug->get($err_path);
    if ($err) {
-      print "E: Failed to parse file $file\n";
-      print $aug->print($err_path);
+      print STDERR "E: Failed to parse file $file\n";
+      print STDERR $aug->print($err_path);
       exit(1);
    }
 }
@@ -136,9 +136,9 @@ sub play_rule {
 sub print_error {
    my ($level, $file, $msg, $explanation) = @_;
 
-   print "$level: File $file\n";
-   print "$level: $msg";
-   print "   $explanation.\n";
+   print STDERR "$level: File $file\n";
+   print STDERR "$level: $msg";
+   print STDERR "   $explanation.\n";
 }
 
 
