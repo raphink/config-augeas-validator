@@ -11,6 +11,10 @@ let eol = Util.eol
 (* Variable: space *)
 let space = Sep.space
 
+let empty = Util.empty
+
+let comment = Util.comment
+
 (************************************************************************
  * Group:                      RECORDS
  *************************************************************************)
@@ -82,9 +86,15 @@ let partition = [ label "partition" . Util.del_str "." . store /[0-9]+/ ]
 
 let disk = [ label "disk" . store /[^\., \t\n]+/ . partition? ]
 
+
+let vg_option = 
+     [ key "pvcreateopts"
+     . Util.del_str "=\"" . store /[^"\n]*/ . Util.del_str "\"" ]
+
 let volume_vg = [ key "vg"
                 . space . name
-                . space . disk ]
+                . space . disk
+                . (space . vg_option)? ]
 
 let disk_list = Build.opt_list disk Sep.comma
 
@@ -100,6 +110,7 @@ let volume_tmpfs =
            . mount_options
            . (space . fs_options)? ]
 
+(* TODO: assign each volume type to a specific disk_config type *)
 let volume_entry = volume_full (type_label "primary") size     (* for physical disks only *)
                  | volume_full (type_label "logical") size     (* for physical disks only *)
                  | volume_full (type_label /raid[0156]/) disk_list  (* raid level *)
@@ -110,12 +121,14 @@ let volume_entry = volume_full (type_label "primary") size     (* for physical d
 
 let volume = volume_entry . eol
 
+let volume_or_comment = 
+      volume | (volume . (volume|empty|comment)* . volume)
+
 (* Group: disk_config *)
 let disk_config_entry (kw:regexp) (opt:lens) =
                   [ key "disk_config" . space . store kw
                   . (space . opt)* . eol
-                  . counter "volume"
-                  . volume* ]
+                  . volume_or_comment? ]
 
 let generic_opt (type:string) (kw:regexp) =
    [ key type . Util.del_str ":" . store kw ]
@@ -168,6 +181,6 @@ let disk_config =
                 | disk_config_entry /disk[0-9]+/ option
                 | disk_config_entry other_label option
 
-let lns = (disk_config|Util.comment|Util.empty)*
+let lns = (disk_config|comment|empty)*
 
 
