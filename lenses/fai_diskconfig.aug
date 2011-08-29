@@ -93,12 +93,20 @@ let type_label_lv = label "lv"
                     . Util.del_str "-"
                     . [ label "name" . store /[^ \t\n]+/ ]
 
+let volume_tmpfs = 
+           [ key "tmpfs" . space
+           . mountpoint .space
+           . size . space
+           . mount_options
+           . (space . fs_options)? ]
+
 let volume_entry = volume_full (type_label "primary") size     (* for physical disks only *)
                  | volume_full (type_label "logical") size     (* for physical disks only *)
                  | volume_full (type_label /raid[0156]/) disk_list  (* raid level *)
                  | volume_full (type_label "raw-disk") size
                  | volume_full type_label_lv size  (* lvm logical volume: vg name and lv name *)
                  | volume_vg
+                 | volume_tmpfs
 
 let volume = volume_entry . eol
 

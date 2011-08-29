@@ -98,6 +98,9 @@ disk_config raid
 raid1		/boot		disk1.1,disk2.1,disk3.1,disk4.1,disk5.1,disk6.1		ext3	rw
 raid1		swap		disk1.2,disk2.2,disk3.2,disk4.2,disk5.2,disk6.2		swap	sw
 raid5		/ke/data	disk1.11,disk2.11,disk3.11,disk4.11,disk5.11,disk6.11	ext3	ro		createopts=\"-m 0\"
+
+disk_config tmpfs
+tmpfs                           /var/opt/hosting/tmp    500             defaults
 "
 
 test FAI_DiskConfig.lns get simple_config =
@@ -229,5 +232,14 @@ test FAI_DiskConfig.lns get simple_config =
       }
     }
   }
-
+  { }
+  { "disk_config" = "tmpfs"
+    { "tmpfs"
+      { "mountpoint" = "/var/opt/hosting/tmp" }
+      { "size" = "500" }
+      { "mount_options"
+        { "1" = "defaults" }
+      }
+    }
+  }
 
