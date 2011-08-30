@@ -1,3 +1,19 @@
+(*
+Module: FAI_DiskConfig
+ Parses disk_config files for FAI
+
+Author: Raphael Pinson <raphink@gmail.com>
+
+About: Reference
+ This lens tries to keep as close as possible to the FAI wiki where possible:
+ http://wiki.fai-project.org/wiki/Setup-storage#New_configuration_file_syntax
+
+About: License
+  This file is licensed under the LGPLv2+, like the rest of Augeas.
+
+About: Lens Usage
+*)
+
 module FAI_DiskConfig =
 
 autoload xfm
@@ -13,8 +29,10 @@ let eol = Util.eol
 (* Variable: space *)
 let space = Sep.space
 
+(* Variable: empty *)
 let empty = Util.empty
 
+(* Variable: comment *)
 let comment = Util.comment
 
 (************************************************************************
@@ -23,27 +41,24 @@ let comment = Util.comment
 
 
 (* Group: volume *)
+
+(* Variable: mountpoint_kw *)
 let mountpoint_kw = "-" (* do not mount *)
          | "swap"       (* swap space *)
          (* fully qualified path; if :encrypt is given, the partition
           * will be encrypted, the key is generated automatically *)
          | /\/[^ \t\n]*(:encrypt)?/
 
+(* Variable: mountpoint *)
 let mountpoint = [ label "mountpoint" . store mountpoint_kw ]
 
-let size_kw = 
-     (* size in kilo, mega (default), giga, tera or petabytes or %,
-      * possibly given as a range; physical
-      * partitions or lvm logical volumes only; *)
-     /[0-9]+[kMGTP%]?(-([0-9]+[kMGTP%]?)?)?(:resize)?/
-     (* size in kilo, mega (default), giga, tera or petabytes or %,
-      * given as upper limit; physical partitions
-      * or lvm logical volumes only *)
-   | /-[0-9]+[kMGTP%]?(:resize)?/
-     (* devices and options for a raid or lvm vg *)
-   | /[^,: \t\n]+(:(spare|missing))*(,[^,: \t\n]+(:(spare|missing))*)*/
+let resize = [ Util.del_str ":" . key "resize" ]
 
-let size = [ label "size" . store size_kw ]
+let size_kw = /[0-9]+[kMGTP%]?(-([0-9]+[kMGTP%]?)?)?/
+            | /-[0-9]+[kMGTP%]?/
+
+(* Variable: size *)
+let size = [ label "size" . store size_kw . resize? ]
 
 let filesystem_kw = "-"
          | "swap"
@@ -98,7 +113,12 @@ let volume_vg = [ key "vg"
                 . space . disk
                 . (space . vg_option)? ]
 
-let disk_list = Build.opt_list disk Sep.comma
+let spare_missing = [ Util.del_str ":" . key /spare|missing/ ]
+
+let disk_with_opt = [ label "disk" . store /[^:\., \t\n]+/ . partition?
+                    . spare_missing* ]
+
+let disk_list = Build.opt_list disk_with_opt Sep.comma
 
 let type_label_lv = label "lv"
                     . [ label "vg" . store (/[^# \t\n-]+/ - "raw") ]
