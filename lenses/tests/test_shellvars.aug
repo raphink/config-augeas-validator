@@ -136,6 +136,13 @@ unset ONBOOT    #   We do not want this var
   test Shellvars.lns get "ulimit -c unlimited\n" =
   { "@builtin" = "ulimit" { "args" = "-c unlimited" } }
 
+
+  (* Test semicolons *)
+  test Shellvars.lns get "VAR1=\"this;is;a;test\"\nVAR2=this;\n" =
+  { "VAR1" = "\"this;is;a;test\"" }
+  { "VAR2" = "this" }
+
+
 (* Local Variables: *)
 (* mode: caml       *)
 (* End:             *)
