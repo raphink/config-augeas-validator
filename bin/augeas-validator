@@ -21,31 +21,81 @@ use strict;
 use Getopt::Long;
 use Pod::Usage;
 use Config::Augeas::Validator;
+use Config::IniFiles;
 
 
 ################
 # Parse options
 ################
 
-my $conffile = "augeas-validator.ini";
+my $conffile;
+my $rulesdir = "/etc/augeas-validator/rules.d";
 my $verbose = 0;
 my $man = 0;
 my $help = 0;
 
 my $opts = GetOptions(
-   'help|?'  => \$help,
-   'man'     => \$man,
-   "verbose" => \$verbose,,
-   "conf=s"    => \$conffile,
+   'help|?'     => \$help,
+   'man'        => \$man,
+   "verbose"    => \$verbose,,
+   "conf=s"     => \$conffile,
+   "rulesdir=s" => \$rulesdir,
 ) or pod2usage(2);
 pod2usage(1) if $help;
 pod2usage(-exitstatus => 0, -verbose => 2) if $man;
 
 my @files = @ARGV;
 
-my $validator = Config::Augeas::Validator->new(conf => $conffile);
-$validator->play_all(@files);
-exit $validator->{err};
+
+sub load_conf {
+   my ($conffile) = @_;
+
+   my $cfg = new Config::IniFiles( -file => $conffile );
+   die "E: Section 'DEFAULT' does not exist in $conffile\n"
+      unless $cfg->SectionExists('DEFAULT');
+
+   return $cfg;
+}
+
+sub filter_files {
+   my ($files, $pattern, $exclude) = @_;
+
+   my @filtered_files;
+   foreach my $file (@$files) {
+      if ($file =~ /^$pattern$/ && $file !~ /^$exclude$/) {
+         push @filtered_files, $file;
+      }
+   }
+
+   return \@filtered_files;
+}
+
+my $validator;
+
+if ($conffile) {
+   $validator = Config::Augeas::Validator->new(conf => $conffile);
+   $validator->play_all(@files);
+   exit $validator->{err};
+} else {
+   opendir (RULESDIR, $rulesdir) or die "E: Could not open rules directory: $!\n";
+   while ($conffile = readdir(RULESDIR)) {
+      next unless ($conffile =~ /.*\.ini$/);
+      my $cfg = load_conf("$rulesdir/$conffile");
+      next unless ($cfg->val('DEFAULT', 'pattern'));
+      my $pattern = $cfg->val('DEFAULT', 'pattern');
+      my $exclude = $cfg->val('DEFAULT', 'exclude');
+      $exclude ||= '^$';
+
+      my $filtered_files = filter_files(\@files, $pattern, $exclude);
+      my $elems = @$filtered_files;
+      next unless ($elems > 0);
+
+      my $validator = Config::Augeas::Validator->new(conf => "$rulesdir/$conffile");
+      $validator->play_all(@$filtered_files);
+      exit $validator->{err};
+   }
+   closedir(RULESDIR);
+}
 
 
 __END__
@@ -80,9 +130,15 @@ Prints the manual page and exits.
 
 Print verbose information.
 
+=item B<-rulesdir rulesdir>
+
+Specify the rules directory to use.
+
 =item B<-conf conffile>
 
-Specify the configuration file to use.
+Specify a configuration file to use. When this option is specified, the rules
+directory is bypassed, and only the given configuration file is used.
+Patterns and excludes are ignored.
 
 =back
 
