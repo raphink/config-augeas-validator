@@ -1,5 +1,7 @@
 module FAI_DiskConfig =
 
+autoload xfm
+
 (************************************************************************
  * Group:                 USEFUL PRIMITIVES
  *************************************************************************)
@@ -183,4 +185,6 @@ let disk_config =
 
 let lns = (disk_config|comment|empty)*
 
+
+let xfm = transform lns Util.stdexcl
 
