@@ -39,6 +39,11 @@ let comment = Util.comment
    A generic tag beginning with a colon *)
 let tag (re:regexp) = [ Util.del_str ":" . key re ]
 
+(* Variable: generic_opt
+   A generic key/value option *)
+let generic_opt (type:string) (kw:regexp) =
+   [ key type . Util.del_str ":" . store kw ]
+
 
 (************************************************************************
  * Group:                      RECORDS
@@ -124,34 +129,48 @@ let volume_full (type:lens) (third_field:lens) =
            . mount_options
            . (space . fs_options)? ]
 
-let name = [ label "name" . store /[^\/ \t\n]+/ ] (* lvm volume group name *)
+(* Variable: name
+   LVM volume group name *)
+let name = [ label "name" . store /[^\/ \t\n]+/ ]
 
+(* Variable: partition
+   An optional partition number for <disk> *)
 let partition = [ label "partition" . Util.del_str "." . store /[0-9]+/ ]
 
+(* Variable: disk *)
 let disk = [ label "disk" . store /[^\., \t\n]+/ . partition? ]
 
-
+(* Variable: vg_option
+   An option for <volume_vg> *)
 let vg_option = 
      [ key "pvcreateopts"
      . Util.del_str "=\"" . store /[^"\n]*/ . Util.del_str "\"" ]
 
+(* Variable: volume_vg *)
 let volume_vg = [ key "vg"
                 . space . name
                 . space . disk
                 . (space . vg_option)? ]
 
+(* Variable: spare_missing *)
 let spare_missing = tag /spare|missing/
 
+(* Variable: disk_with_opt
+   A <disk> with a spare/missing option for raids *)
 let disk_with_opt = [ label "disk" . store /[^:\., \t\n]+/ . partition?
                     . spare_missing* ]
 
+(* Variable: disk_list
+   A list of <disk_with_opt>s *)
 let disk_list = Build.opt_list disk_with_opt Sep.comma
 
+(* Variable: type_label_lv *)
 let type_label_lv = label "lv"
                     . [ label "vg" . store (/[^# \t\n-]+/ - "raw") ]
                     . Util.del_str "-"
                     . [ label "name" . store /[^ \t\n]+/ ]
 
+(* Variable: volume_tmpfs *)
 let volume_tmpfs = 
            [ key "tmpfs" . space
            . mountpoint .space
@@ -160,6 +179,8 @@ let volume_tmpfs =
            . (space . fs_options)? ]
 
 (* TODO: assign each volume type to a specific disk_config type *)
+(* Variable: volume_entry
+   An <volume> entry *)
 let volume_entry = volume_full (key "primary") size     (* for physical disks only *)
                  | volume_full (key "logical") size     (* for physical disks only *)
                  | volume_full (key /raid[0156]/) disk_list  (* raid level *)
@@ -168,20 +189,21 @@ let volume_entry = volume_full (key "primary") size     (* for physical disks on
                  | volume_vg
                  | volume_tmpfs
 
+(* Variable: volume *)
 let volume = volume_entry . eol
 
+(* Variable: volume_or_comment
+   A succesion of <volume>s and <comment>s *)
 let volume_or_comment = 
       volume | (volume . (volume|empty|comment)* . volume)
 
-(* Group: disk_config *)
+(* Variable: disk_config_entry *)
 let disk_config_entry (kw:regexp) (opt:lens) =
                   [ key "disk_config" . space . store kw
                   . (space . opt)* . eol
                   . volume_or_comment? ]
 
-let generic_opt (type:string) (kw:regexp) =
-   [ key type . Util.del_str ":" . store kw ]
-
+(* Variable: lvmoption *)
 let lvmoption =
      (* preserve partitions -- always *)
       generic_opt "preserve_always" /[^\/, \t\n-]+-[^\/, \t\n-]+(,[^\/,\s\-]+-[^\/, \t\n-]+)*/
@@ -194,6 +216,7 @@ let lvmoption =
       * may be the device (/dev/xxx), a label given using -L, or the uuid *)
    | generic_opt "fstabkey" /device|label|uuid/
 
+(* Variable: raidoption *)
 let raidoption =
      (* preserve partitions -- always *)
      generic_opt "preserve_always" /[0-9]+(,[0-9]+)*/
@@ -204,6 +227,7 @@ let raidoption =
       * may be the device (/dev/xxx), a label given using -L, or the uuid *)
    | generic_opt "fstabkey" /device|label|uuid/
 
+(* Variable: option *)
 let option =
      (* preserve partitions -- always *)
      generic_opt "preserve_always" /[0-9]+(,[0-9]+)*/
@@ -222,6 +246,7 @@ let option =
       * may be the device (/dev/xxx), a label given using -L, or the uuid *)
    | generic_opt "fstabkey" /device|label|uuid/
 
+(* Variable: disk_config *)
 let disk_config =
     let other_label = Rx.fspath - "lvm" - "raid" - "end" - /disk[0-9]+/ in
                   disk_config_entry "lvm" lvmoption
@@ -230,6 +255,8 @@ let disk_config =
                 | disk_config_entry /disk[0-9]+/ option
                 | disk_config_entry other_label option
 
+(* Variable: lns
+   The disk_config lens *)
 let lns = (disk_config|comment|empty)*
 
 
