@@ -35,6 +35,11 @@ let empty = Util.empty
 (* Variable: comment *)
 let comment = Util.comment
 
+(* Variable: tag
+   A generic tag beginning with a colon *)
+let tag (re:regexp) = [ Util.del_str ":" . key re ]
+
+
 (************************************************************************
  * Group:                      RECORDS
  *************************************************************************)
@@ -47,55 +52,77 @@ let mountpoint_kw = "-" (* do not mount *)
          | "swap"       (* swap space *)
          (* fully qualified path; if :encrypt is given, the partition
           * will be encrypted, the key is generated automatically *)
-         | /\/[^ \t\n]*(:encrypt)?/
+         | /\/[^: \t\n]*/
+
+(* Variable: encrypt
+   encrypt tag *)
+let encrypt = tag "encrypt"
 
 (* Variable: mountpoint *)
-let mountpoint = [ label "mountpoint" . store mountpoint_kw ]
+let mountpoint = [ label "mountpoint" . store mountpoint_kw
+                 (* encrypt is only for the fspath, but we parse it anyway *)
+                 . encrypt?]
 
-let resize = [ Util.del_str ":" . key "resize" ]
+(* Variable: resize
+   resize tag *)
+let resize = tag "resize"
 
+(* Variable: size_kw
+   Regexps for size *)
 let size_kw = /[0-9]+[kMGTP%]?(-([0-9]+[kMGTP%]?)?)?/
             | /-[0-9]+[kMGTP%]?/
 
 (* Variable: size *)
 let size = [ label "size" . store size_kw . resize? ]
 
+(* Variable: filesystem_kw
+   Regexps for filesystem *)
 let filesystem_kw = "-"
          | "swap"
+         (* NOTE: Restraining this regexp would improve perfs *)
          | (Rx.no_spaces - "-" - "swap") (* mkfs.xxx must exist *)
 
+(* Variable: filesystem *)
 let filesystem = [ label "filesystem" . store filesystem_kw ]
 
 
+(* Variable: mount_option_value *)
 let mount_option_value = [ label "value" . Util.del_str "="
                          . store /[^,= \t\n]+/ ]
 
+(* Variable: mount_option
+   Counting options *)
 let mount_option = [ seq "mount_option"
                    . store /[^,= \t\n]+/
                    . mount_option_value? ]
 
+(* Variable: mount_options
+   An array of <mount_option>s *)
 let mount_options = [ label "mount_options"
                     . counter "mount_option"
                     . Build.opt_list mount_option Sep.comma ]
 
+(* Variable: fs_option *)
 let fs_option = 
      [ key /createopts|tuneopts/
      . Util.del_str "=\"" . store /[^"\n]*/ . Util.del_str "\"" ]
 
+(* Variable: fs_options
+   An array of <fs_option>s *)
 let fs_options =
      (* options to append to mkfs.xxx and to the filesystem-specific
       * tuning tool *)
      [ label "fs_options" . Build.opt_list fs_option Sep.space ]
 
+(* Variable: volume_full *)
 let volume_full (type:lens) (third_field:lens) =
            [ type . space
            . mountpoint .space
+           (* The third field changes depending on types *)
            . third_field . space
            . filesystem . space
            . mount_options
            . (space . fs_options)? ]
-
-let type_label (kw:regexp) = key kw
 
 let name = [ label "name" . store /[^\/ \t\n]+/ ] (* lvm volume group name *)
 
@@ -113,7 +140,7 @@ let volume_vg = [ key "vg"
                 . space . disk
                 . (space . vg_option)? ]
 
-let spare_missing = [ Util.del_str ":" . key /spare|missing/ ]
+let spare_missing = tag /spare|missing/
 
 let disk_with_opt = [ label "disk" . store /[^:\., \t\n]+/ . partition?
                     . spare_missing* ]
@@ -133,10 +160,10 @@ let volume_tmpfs =
            . (space . fs_options)? ]
 
 (* TODO: assign each volume type to a specific disk_config type *)
-let volume_entry = volume_full (type_label "primary") size     (* for physical disks only *)
-                 | volume_full (type_label "logical") size     (* for physical disks only *)
-                 | volume_full (type_label /raid[0156]/) disk_list  (* raid level *)
-                 | volume_full (type_label "raw-disk") size
+let volume_entry = volume_full (key "primary") size     (* for physical disks only *)
+                 | volume_full (key "logical") size     (* for physical disks only *)
+                 | volume_full (key /raid[0156]/) disk_list  (* raid level *)
+                 | volume_full (key "raw-disk") size
                  | volume_full type_label_lv size  (* lvm logical volume: vg name and lv name *)
                  | volume_vg
                  | volume_tmpfs
