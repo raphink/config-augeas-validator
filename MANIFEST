@@ -4,6 +4,9 @@ ChangeLog
 examples/sudo.ini
 examples/sudo_fail.ini
 examples/hosts.ini
+examples/faiclass.ini
+examples/faiclassvar.ini
+examples/faidiskconfig.ini
 fakeroot/etc/sudoers
 fakeroot/etc/hosts
 lib/Config/Augeas/Validator.pm
