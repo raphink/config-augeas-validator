@@ -31,25 +31,15 @@ sub new {
 
    my $self = __PACKAGE__->SUPER::new();
 
-   my $conffile = $options{conf};
-   assert_notempty('conf', $conffile);
-   $self->load_conf($conffile);
+   $self->{conffile} = $options{conf};
+   $self->{rulesdir} = $options{rulesdir};
 
-   # Get rules
-   @{$self->{rules}} = split(/,\s*/,
-                       $self->{cfg}->val('DEFAULT', 'rules'));
-
-   $self->init_augeas;
-
-   # Instantiate general error
-   $self->{err} = 0;
-
-   # Get return error code
-   $self->{err_code} = $self->{cfg}->val('DEFAULT', 'err_code') || 1;
+   unless ($self->{conffile}) {
+      assert_notempty('rulesdir', $self->{rulesdir});
+   }
 
    return $self;
 }
-
 
 sub load_conf {
    my ($self, $conffile) = @_;
@@ -70,15 +60,66 @@ sub init_augeas {
    $self->{aug}->rm("/augeas/load/*[label() != \"$self->{lens}\"]");
 }
 
-
-sub play_all {
+sub play_one {
    my ($self, @files) = @_;
+
+   # Get rules
+   @{$self->{rules}} = split(/,\s*/,
+                       $self->{cfg}->val('DEFAULT', 'rules'));
+
+   # Instantiate general error
+   $self->{err} = 0;
+
+   # Get return error code
+   $self->{err_code} = $self->{cfg}->val('DEFAULT', 'err_code') || 1;
+
+   $self->init_augeas;
+
    for my $file (@files) {
       die "E: No such file $file\n" unless (-e $file);
       $self->set_aug_file($file);
       for my $rule (@{$self->{rules}}) {
          $self->play_rule($rule, $file);
       }
+   }
+}
+
+sub filter_files {
+   my ($files, $pattern, $exclude) = @_;
+
+   my @filtered_files;
+   foreach my $file (@$files) {
+      if ($file =~ /^$pattern$/ && $file !~ /^$exclude$/) {
+         push @filtered_files, $file;
+      }
+   }
+
+   return \@filtered_files;
+}
+
+sub play {
+   my ($self, @files) = @_;
+   if ($self->{conffile}) {
+      $self->load_conf($self->{conffile});
+      $self->play_one(@files);
+   } else {
+      my $rulesdir = $self->{rulesdir};
+      opendir (RULESDIR, $rulesdir) or die "E: Could not open rules directory: $!\n";
+      while (my $conffile = readdir(RULESDIR)) {
+         next unless ($conffile =~ /.*\.ini$/);
+         $self->load_conf("$rulesdir/$conffile");
+         next unless ($self->{cfg}->val('DEFAULT', 'pattern'));
+         my $pattern = $self->{cfg}->val('DEFAULT', 'pattern');
+         my $exclude = $self->{cfg}->val('DEFAULT', 'exclude');
+         $exclude ||= '^$';
+   
+         my $filtered_files = filter_files(\@files, $pattern, $exclude);
+         my $elems = @$filtered_files;
+         next unless ($elems > 0);
+   
+         $self->play_one(@$filtered_files);
+      }
+      closedir(RULESDIR);
    }
 }
 

@@ -47,54 +47,16 @@ pod2usage(-exitstatus => 0, -verbose => 2) if $man;
 my @files = @ARGV;
 
 
-sub load_conf {
-   my ($conffile) = @_;
-
-   my $cfg = new Config::IniFiles( -file => $conffile );
-   die "E: Section 'DEFAULT' does not exist in $conffile\n"
-      unless $cfg->SectionExists('DEFAULT');
-
-   return $cfg;
-}
-
-sub filter_files {
-   my ($files, $pattern, $exclude) = @_;
-
-   my @filtered_files;
-   foreach my $file (@$files) {
-      if ($file =~ /^$pattern$/ && $file !~ /^$exclude$/) {
-         push @filtered_files, $file;
-      }
-   }
-
-   return \@filtered_files;
-}
 
 my $validator;
 
 if ($conffile) {
    $validator = Config::Augeas::Validator->new(conf => $conffile);
-   $validator->play_all(@files);
+   $validator->play(@files);
    exit $validator->{err};
 } else {
-   opendir (RULESDIR, $rulesdir) or die "E: Could not open rules directory: $!\n";
-   while ($conffile = readdir(RULESDIR)) {
-      next unless ($conffile =~ /.*\.ini$/);
-      my $cfg = load_conf("$rulesdir/$conffile");
-      next unless ($cfg->val('DEFAULT', 'pattern'));
-      my $pattern = $cfg->val('DEFAULT', 'pattern');
-      my $exclude = $cfg->val('DEFAULT', 'exclude');
-      $exclude ||= '^$';
-
-      my $filtered_files = filter_files(\@files, $pattern, $exclude);
-      my $elems = @$filtered_files;
-      next unless ($elems > 0);
-
-      my $validator = Config::Augeas::Validator->new(conf => "$rulesdir/$conffile");
-      $validator->play_all(@$filtered_files);
-      exit $validator->{err};
-   }
-   closedir(RULESDIR);
+   $validator = Config::Augeas::Validator->new(rulesdir => $rulesdir);
+   $validator->play(@files);
 }
 
 
@@ -113,6 +75,7 @@ __END__
       -man full documentation
       -verbose be verbose
       -conf <conffile> specify which configuration file to use
+      -rulesdir <rules directory> specify a directory of rules to use
 
 =head1 OPTIONS
 
