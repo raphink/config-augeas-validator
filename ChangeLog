@@ -1,3 +1,11 @@
+2011-09-05  Raphaël Pinson v0.103
+
+	* Fix return code in augeas-validator in rulesdir mode;
+	* Remove obsolete call to Config::IniFiles;
+	* Fix doc;
+	* Add all examples to MANIFEST;
+	* Check that lens was properly loaded.
+
 2011-09-05  Raphaël Pinson v0.102
 
 	* Fix unit tests
