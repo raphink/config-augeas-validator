@@ -228,9 +228,9 @@ __END__
    use Config::Augeas::Validator;
 
    # Initialize
-   my $validator = Config::Augeas::Validator->new(conf => $conffile);
+   my $validator = Config::Augeas::Validator->new(rulesdir => $rulesdir);
 
-   $validator->play_all(@files);
+   $validator->play(@files);
    exit $validator->{err};
 
 
