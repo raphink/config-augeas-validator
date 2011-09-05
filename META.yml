@@ -1,6 +1,6 @@
 ---
 name: Config::Augeas::Validator
-version: 0.101
+version: 0.102
 author:
   - 'Raphaël Pinson <raphink@cpan.org>'
 abstract: ~
@@ -14,5 +14,5 @@ build_requires:
 provides:
   Config::Augeas::Validator:
     file: lib/Config/Augeas/Validator.pm
-    version: 0.101
+    version: 0.102
 generated_by: Module::Build version 0.26
