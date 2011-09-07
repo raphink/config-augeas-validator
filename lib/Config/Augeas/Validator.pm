@@ -38,6 +38,7 @@ sub new {
       assert_notempty('rulesdir', $self->{rulesdir});
    }
 
+
    # Instantiate general error
    $self->{err} = 0;
 
@@ -48,7 +49,7 @@ sub load_conf {
    my ($self, $conffile) = @_;
 
    $self->{cfg} = new Config::IniFiles( -file => $conffile );
-   die "E: Section 'DEFAULT' does not exist in $conffile\n"
+   die "E:[$conffile]: Section 'DEFAULT' does not exist.\n"
       unless $self->{cfg}->SectionExists('DEFAULT');
 }
 
@@ -76,7 +77,9 @@ sub play_one {
    $self->init_augeas;
 
    for my $file (@files) {
-      die "E: No such file $file\n" unless (-e $file);
+      unless (-e $file) {
+         $self->die_msg("No such file $file");
+      }
       $self->set_aug_file($file);
       for my $rule (@{$self->{rules}}) {
          $self->play_rule($rule, $file);
@@ -104,10 +107,12 @@ sub play {
       $self->play_one(@files);
    } else {
       my $rulesdir = $self->{rulesdir};
-      opendir (RULESDIR, $rulesdir) or die "E: Could not open rules directory: $!\n";
+      opendir (RULESDIR, $rulesdir)
+         or die "E: Could not open rules directory $rulesdir: $!\n";
       while (my $conffile = readdir(RULESDIR)) {
          next unless ($conffile =~ /.*\.ini$/);
-         $self->load_conf("$rulesdir/$conffile");
+         $self->{conffile} = "$rulesdir/$conffile";
+         $self->load_conf($self->{conffile});
          next unless ($self->{cfg}->val('DEFAULT', 'pattern'));
          my $pattern = $self->{cfg}->val('DEFAULT', 'pattern');
          my $exclude = $self->{cfg}->val('DEFAULT', 'exclude');
@@ -146,24 +151,57 @@ sub set_aug_file {
    my $err_lens_path = "/augeas/load/$lens/error";
    my $err_lens = $aug->get($err_lens_path);
    if ($err_lens) {
-      print STDERR "E: Failed to load lens $lens\n";
-      print STDERR $aug->print($err_lens_path);
+      $self->err_msg("Failed to load lens $lens");
+      $self->err_msg($aug->print($err_lens_path));
    }
 
    my $err_path = "/augeas/files$absfile/error";
    my $err = $aug->get($err_path);
    if ($err) {
-      print STDERR "E: Failed to parse file $file\n";
-      print STDERR $aug->print($err_path);
-      exit(1);
+      my $err_line_path = "/augeas/files$absfile/error/line";
+      my $err_line = $aug->get($err_line_path);
+      my $err_char_path = "/augeas/files$absfile/error/char";
+      my $err_char = $aug->get($err_char_path);
+
+      $self->err_msg("Failed to parse file $file");
+      my $err_msg = ($err eq "parse_failed") ?
+         "Parsing failed on line $err_line, character $err_char."
+         : $aug->print($err_path);
+      $self->die_msg($err_msg);
    }
+}
+
+sub confname {
+   my ($self) = @_;
+
+   assert_notempty('conffile', $self->{conffile});
+   my $confname = $self->{conffile};
+   $confname =~ s|.*/||;
+   return $confname;
+}
+
+
+sub err_msg {
+   my ($self, $msg) = @_;
+
+   my $confname = $self->confname();
+   print STDERR "E:[$confname]: $msg\n";
+}
+
+sub die_msg {
+   my ($self, $msg) = @_;
+
+   $self->err_msg($msg);
+   exit(1);
 }
 
 
 sub play_rule {
    my ($self, $rule, $file) = @_;
 
-   die "E: Section '$rule' does not exist\n" unless $self->{cfg}->SectionExists($rule);
+   unless ($self->{cfg}->SectionExists($rule)) {
+      $self->die_msg("Section '$rule' does not exist");
+   }
    my $name = $self->{cfg}->val($rule, 'name');
    assert_notempty('name', $name);
    my $type = $self->{cfg}->val($rule, 'type');
@@ -203,11 +241,11 @@ sub assert {
          } elsif ($level eq "warning") {
             print_error("W", $file, $msg, $explanation);
          } else {
-            die "E: Unknown level $level for assertion '$name'\n";
+            $self->die_msg("Unknown level $level for assertion '$name'");
          }
       }
    } else {
-      die "E: Unknown type '$type'\n";
+      $self->die_msg("Unknown type '$type'");
    }
 }
 
