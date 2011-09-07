@@ -22,6 +22,7 @@ use warnings;
 use base qw(Class::Accessor);
 use Config::Augeas qw(get count_match print);
 use Config::IniFiles;
+use File::Find;
 
 our $VERSION = '0.103';
 
@@ -36,6 +37,8 @@ sub new {
    $self->{rulesdir} ||= "/etc/augeas-validator/rules.d";
 
    $self->{verbose} = $options{verbose};
+
+   $self->{recurse} = $options{recurse};
 
    unless ($self->{conffile}) {
       assert_notempty('rulesdir', $self->{rulesdir});
@@ -106,7 +109,15 @@ sub filter_files {
 }
 
 sub play {
-   my ($self, @files) = @_;
+   my ($self, @infiles) = @_;
+
+   my @files;
+   if ($self->{recurse}) {
+     find sub { push @files, $File::Find::name if -e }, @infiles;
+   } else {
+      @files = @infiles;
+   }
+   
    if ($self->{conffile}) {
       $self->load_conf($self->{conffile});
       $self->play_one(@files);
