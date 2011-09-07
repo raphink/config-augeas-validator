@@ -34,6 +34,8 @@ sub new {
    $self->{conffile} = $options{conf};
    $self->{rulesdir} = $options{rulesdir};
 
+   $self->{verbose} = $options{verbose};
+
    unless ($self->{conffile}) {
       assert_notempty('rulesdir', $self->{rulesdir});
    }
@@ -80,8 +82,10 @@ sub play_one {
       unless (-e $file) {
          $self->die_msg("No such file $file");
       }
+      $self->info_msg("Parsing file $file");
       $self->set_aug_file($file);
       for my $rule (@{$self->{rules}}) {
+         $self->info_msg("Applying rule $rule to $file");
          $self->play_rule($rule, $file);
       }
    }
@@ -193,6 +197,13 @@ sub die_msg {
 
    $self->err_msg($msg);
    exit(1);
+}
+
+sub info_msg {
+   my ($self, $msg) = @_;
+
+   my $confname = $self->confname();
+   print STDERR "I:[$confname]: $msg\n" if $self->{verbose};
 }
 
 
