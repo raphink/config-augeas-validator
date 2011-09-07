@@ -113,8 +113,8 @@ Patterns and excludes are ignored.
 =head1 DESCRIPTION
 
 B<Augeas-validator> is a generic configuration validator based on B<Augeas>.
-It takes a configuration file (by default F<augeas-validator.ini>)
-which contains a set of rules for a given B<Augeas> lens and applies them to the given files.
+It takes a configuration file or a directory of configuration files which contain
+ a set of rules for a given B<Augeas> lens and applies them to the given files.
 
 =head1 CONFIGURATION
 
@@ -124,11 +124,6 @@ See the L<Config::Augeas::Validator> manual.
 =head1 SEE ALSO
 
 L<Config::Augeas>
-
-=head1 FILES
-
-F<augeas-validator.ini>
-    The default configuration file for B<Augeas-validator>.
 
 =cut
 

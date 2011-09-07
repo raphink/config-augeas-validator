@@ -33,6 +33,7 @@ sub new {
 
    $self->{conffile} = $options{conf};
    $self->{rulesdir} = $options{rulesdir};
+   $self->{rulesdir} ||= "/etc/augeas-validator/rules.d";
 
    $self->{verbose} = $options{verbose};
 
@@ -373,8 +374,8 @@ L<Config::Augeas>
 
 =head1 FILES
 
-F<augeas-validator.ini>
-    The default configuration file for B<Config::Augeas::Validator>.
+F</etc/augeas-validator/rules.d>
+    The default rules directory for B<Config::Augeas::Validator>.
 
 =cut
 
