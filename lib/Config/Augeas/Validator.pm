@@ -38,6 +38,9 @@ sub new {
       assert_notempty('rulesdir', $self->{rulesdir});
    }
 
+   # Instantiate general error
+   $self->{err} = 0;
+
    return $self;
 }
 
@@ -66,9 +69,6 @@ sub play_one {
    # Get rules
    @{$self->{rules}} = split(/,\s*/,
                        $self->{cfg}->val('DEFAULT', 'rules'));
-
-   # Instantiate general error
-   $self->{err} = 0;
 
    # Get return error code
    $self->{err_code} = $self->{cfg}->val('DEFAULT', 'err_code') || 1;
