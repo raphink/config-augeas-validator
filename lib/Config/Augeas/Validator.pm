@@ -200,10 +200,12 @@ sub confname {
 
 
 sub err_msg {
-   my ($self, $msg) = @_;
+   my ($self, $msg, $level) = @_;
+
+   $level ||= "E";
 
    my $confname = $self->confname();
-   print STDERR "E:[$confname]: $msg\n";
+   print STDERR "$level:[$confname]: $msg\n";
 }
 
 sub die_msg {
@@ -245,10 +247,10 @@ sub play_rule {
 
 
 sub print_error {
-   my ($level, $file, $msg, $explanation) = @_;
+   my ($self, $level, $file, $msg, $explanation) = @_;
 
-   print STDERR "$level: File $file\n";
-   print STDERR "$level: $msg";
+   $self->err_msg("File $file", $level);
+   $self->err_msg($msg, $level);
    print STDERR "   $explanation.\n";
 }
 
@@ -259,12 +261,12 @@ sub assert {
    if ($type eq 'count') {
       my $count = $self->{aug}->count_match("$expr");
       if ($count != $value) {
-         my $msg = "Assertion '$name' of type $type returned $count for file $file, expected $value:\n";
+         my $msg = "Assertion '$name' of type $type returned $count for file $file, expected $value:";
          if ($level eq "error") {
-            print_error("E", $file, $msg, $explanation);
+            $self->print_error("E", $file, $msg, $explanation);
 	    $self->{err} = $self->{err_code};
          } elsif ($level eq "warning") {
-            print_error("W", $file, $msg, $explanation);
+            $self->print_error("W", $file, $msg, $explanation);
          } else {
             $self->die_msg("Unknown level $level for assertion '$name'");
          }
