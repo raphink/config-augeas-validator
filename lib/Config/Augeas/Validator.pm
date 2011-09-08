@@ -42,6 +42,9 @@ sub new {
 
    $self->{nofail} = $options{nofail};
 
+   # Init hourglass
+   $self->{tick} = 0;
+
    unless ($self->{conffile}) {
       assert_notempty('rulesdir', $self->{rulesdir});
    }
@@ -110,12 +113,30 @@ sub filter_files {
    return \@filtered_files;
 }
 
+sub tick {
+   my ($self) = @_;
+
+   $self->{tick}++;
+   my $tick = $self->{tick} % 4;
+
+   my $hourglass; 
+   print "\r";
+    
+   $hourglass = "|"  if ( $tick == 0 ); 
+   $hourglass = "/"  if ( $tick == 1 ); 
+   $hourglass = "-"  if ( $tick == 2 ); 
+   $hourglass = "\\" if ( $tick == 3 ); 
+
+   print "I: Recursively analyzing directories $hourglass\r";
+}
+
 sub play {
    my ($self, @infiles) = @_;
 
    my @files;
    if ($self->{recurse}) {
-     find sub { push @files, $File::Find::name if -e }, @infiles;
+     find sub { push @files, $File::Find::name if -e; $self->tick if $self->{verbose} }, @infiles;
+     print "\n" if $self->{verbose};
    } else {
       @files = @infiles;
    }
