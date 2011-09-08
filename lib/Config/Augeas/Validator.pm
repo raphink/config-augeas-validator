@@ -38,7 +38,7 @@ sub new {
 
    $self->{verbose} = $options{verbose};
    $self->{debug} = $options{debug};
-
+   $self->{quiet} = $options{quiet};
    $self->{verbose} = 1 if $self->{debug};
 
    $self->{recurse} = $options{recurse};
@@ -65,7 +65,7 @@ sub new {
 sub load_conf {
    my ($self, $conffile) = @_;
 
-   $self->info_msg("Loading rule file $conffile");
+   $self->debug_msg("Loading rule file $conffile");
 
    $self->{cfg} = new Config::IniFiles( -file => $conffile );
    die "E:[$conffile]: Section 'DEFAULT' does not exist.\n"
@@ -98,10 +98,10 @@ sub play_one {
       unless (-e $file) {
          $self->die_msg("No such file $file");
       }
-      $self->info_msg("Parsing file $file");
+      $self->verbose_msg("Parsing file $file");
       $self->set_aug_file($file);
       for my $rule (@{$self->{rules}}) {
-         $self->info_msg("Applying rule $rule to $file");
+         $self->verbose_msg("Applying rule $rule to $file");
          $self->play_rule($rule, $file);
       }
    }
@@ -149,8 +149,11 @@ sub play {
 
    my @files;
    if ($self->{recurse}) {
-     find sub { push @files, $File::Find::name if -e; $self->tick if $self->{verbose} }, @infiles;
-     print "\n" if $self->{verbose};
+     find sub {
+        push @files, $File::Find::name if -e;
+        $self->tick unless $self->{quiet}
+        }, @infiles;
+     print "\n" unless $self->{quiet};
    } else {
       @files = @infiles;
    }
@@ -253,16 +256,22 @@ sub die_msg {
    exit(1) unless $self->{nofail};
 }
 
-sub info_msg {
+sub verbose_msg {
    my ($self, $msg) = @_;
 
-   $self->print_msg($msg, 'I') if $self->{verbose};
+   $self->print_msg($msg, 'V') if $self->{verbose};
 }
 
 sub debug_msg {
    my ($self, $msg) = @_;
 
    $self->print_msg($msg, 'D') if $self->{debug};
+}
+
+sub info_msg {
+   my ($self, $msg) = @_;
+
+   $self->print_msg($msg, 'I') unless $self->{quiet};
 }
 
 

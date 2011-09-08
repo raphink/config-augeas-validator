@@ -34,6 +34,7 @@ my $conffile;
 my $rulesdir = "/etc/augeas-validator/rules.d";
 my $verbose = 0;
 my $debug = 0;
+my $quiet = 0;
 my $recurse = 0;
 my $exclude = '';
 my $nofail = 0;
@@ -45,6 +46,7 @@ my $opts = GetOptions(
    'man'        => \$man,
    "verbose"    => \$verbose,
    "debug"      => \$debug,
+   "quiet"      => \$quiet,
    "conf=s"     => \$conffile,
    "rulesdir=s" => \$rulesdir,
    "recursive"  => \$recurse,
@@ -65,7 +67,8 @@ if ($conffile) {
                                                exclude => $exclude,
                                                nofail  => $nofail,
                                                verbose => $verbose,
-                                               debug   => $debug);
+                                               debug   => $debug,
+                                               quiet   => $quiet);
    $validator->play(@files);
    exit $validator->{err};
 } else {
@@ -74,7 +77,8 @@ if ($conffile) {
                                                exclude => $exclude,
                                                nofail  => $nofail,
                                                verbose => $verbose,
-                                               debug   => $debug);
+                                               debug   => $debug,
+                                               quiet   => $quiet);
    $validator->play(@files);
    exit $validator->{err};
 }
