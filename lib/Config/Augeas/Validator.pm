@@ -63,6 +63,8 @@ sub new {
 sub load_conf {
    my ($self, $conffile) = @_;
 
+   $self->info_msg("Loading rule file $conffile");
+
    $self->{cfg} = new Config::IniFiles( -file => $conffile );
    die "E:[$conffile]: Section 'DEFAULT' does not exist.\n"
       unless $self->{cfg}->SectionExists('DEFAULT');
