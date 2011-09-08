@@ -52,6 +52,7 @@ sub new {
       assert_notempty('rulesdir', $self->{rulesdir});
    }
 
+   $self->{aug} = Config::Augeas->new( "no_load" => 1 );
 
    # Instantiate general error
    $self->{err} = 0;
@@ -74,7 +75,6 @@ sub init_augeas {
    # Initialize Augeas
    $self->{lens} = $self->{cfg}->val('DEFAULT', 'lens');
    assert_notempty('lens', $self->{lens});
-   $self->{aug} = Config::Augeas->new( "no_load" => 1 );
    $self->{aug}->rm("/augeas/load/*[label() != \"$self->{lens}\"]");
 }
 
