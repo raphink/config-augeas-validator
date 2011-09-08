@@ -37,6 +37,9 @@ sub new {
    $self->{rulesdir} ||= "/etc/augeas-validator/rules.d";
 
    $self->{verbose} = $options{verbose};
+   $self->{debug} = $options{debug};
+
+   $self->{verbose} = 1 if $self->{debug};
 
    $self->{recurse} = $options{recurse};
 
@@ -110,6 +113,7 @@ sub play_one_recurse {
    my ($self, @files) = @_;
 
    if ($self->{recurse}) {
+     $self->debug_msg("Analyzing directories recursively");
      find (
         {
            wanted => sub { $self->play_one($File::Find::name) if -e },
@@ -208,13 +212,19 @@ sub confname {
 }
 
 
-sub err_msg {
+sub print_msg {
    my ($self, $msg, $level) = @_;
 
    $level ||= "E";
 
    my $confname = $self->confname();
    print STDERR "$level:[$confname]: $msg\n";
+}
+
+sub err_msg {
+   my ($self, $msg) = @_;
+
+   $self->print_msg($msg, 'E');
 }
 
 sub die_msg {
@@ -227,8 +237,13 @@ sub die_msg {
 sub info_msg {
    my ($self, $msg) = @_;
 
-   my $confname = $self->confname();
-   print STDERR "I:[$confname]: $msg\n" if $self->{verbose};
+   $self->print_msg($msg, 'I') if $self->{verbose};
+}
+
+sub debug_msg {
+   my ($self, $msg) = @_;
+
+   $self->print_msg($msg, 'D') if $self->{debug};
 }
 
 
