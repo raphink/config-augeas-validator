@@ -138,7 +138,7 @@ sub tick {
    $hourglass = "-"  if ( $tick == 2 ); 
    $hourglass = "\\" if ( $tick == 3 ); 
 
-   print "I: Recursively analyzing directories $hourglass\r";
+   print colored ("I: Recursively analyzing directories $hourglass", "blue bold"),"\r";
 }
 
 sub play {
