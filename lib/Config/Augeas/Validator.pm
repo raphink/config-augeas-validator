@@ -24,7 +24,7 @@ use Config::Augeas qw(get count_match print);
 use Config::IniFiles;
 use File::Find;
 
-our $VERSION = '0.103';
+our $VERSION = '1.000';
 
 sub new {
    my $class = shift;

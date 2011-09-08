@@ -1,3 +1,13 @@
+2011-09-08  Raphaël Pinson v1.000
+
+	* Add verbose, debug and quiet modes;
+	* Add recursivity;
+	* Add nofail mode;
+	* Add generic excludes;
+	* Improve error management;
+	* Instantiate Augeas only once;
+	* Make default system-wide rulesdir.
+
 2011-09-05  Raphaël Pinson v0.103
 
 	* Fix return code in augeas-validator in rulesdir mode;
