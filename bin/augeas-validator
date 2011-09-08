@@ -86,8 +86,10 @@ __END__
       -help brief help message
       -man full documentation
       -verbose be verbose
-      -conf <conffile> specify which configuration file to use
       -rulesdir <rules directory> specify a directory of rules to use
+      -conf <conffile> specify which configuration file to use
+      -recursive recursively analyze the given directories
+      -nofail do not stop when errors are found
 
 =head1 OPTIONS
 
@@ -114,6 +116,14 @@ Specify the rules directory to use.
 Specify a configuration file to use. When this option is specified, the rules
 directory is bypassed, and only the given configuration file is used.
 Patterns and excludes are ignored.
+
+=item B<-recursive>
+
+Analyze the given directories recursively and test each file found.
+
+=item B<-nofail>
+
+Do not stop when errors are found on a file.
 
 =back
 
