@@ -131,14 +131,14 @@ sub tick {
    my $tick = $self->{tick} % 4;
 
    my $hourglass; 
-   print "\r";
+   print "\b";
     
    $hourglass = "|"  if ( $tick == 0 ); 
    $hourglass = "/"  if ( $tick == 1 ); 
    $hourglass = "-"  if ( $tick == 2 ); 
    $hourglass = "\\" if ( $tick == 3 ); 
 
-   print colored ("I: Recursively analyzing directories $hourglass", "blue bold"),"\r";
+   print colored ($hourglass, "blue bold");
 }
 
 sub play {
@@ -146,6 +146,7 @@ sub play {
 
    my @files;
    if ($self->{recurse}) {
+      print colored ("I: Recursively analyzing directories  ", "blue bold") unless $self->{quiet};
       find sub {
          my $exclude = $self->{exclude};
          $exclude ||= '^$';
