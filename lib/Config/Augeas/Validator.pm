@@ -284,8 +284,8 @@ sub play_rule {
 sub print_error {
    my ($self, $level, $file, $msg, $explanation) = @_;
 
-   $self->err_msg("File $file", $level);
-   $self->err_msg($msg, $level);
+   $self->print_msg("File $file", $level);
+   $self->print_msg($msg, $level);
    print STDERR "   $explanation.\n";
 }
 
