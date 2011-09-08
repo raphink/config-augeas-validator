@@ -42,9 +42,6 @@ sub new {
 
    $self->{nofail} = $options{nofail};
 
-   # Init hourglass
-   $self->{tick} = 0;
-
    unless ($self->{conffile}) {
       assert_notempty('rulesdir', $self->{rulesdir});
    }
@@ -78,6 +75,15 @@ sub init_augeas {
 sub play_one {
    my ($self, @files) = @_;
 
+   my $pattern = $self->{cfg}->val('DEFAULT', 'pattern');
+   $pattern ||= '.*';
+   my $exclude = $self->{cfg}->val('DEFAULT', 'exclude');
+   $exclude ||= '^$';
+
+   my $filtered_files = filter_files(\@files, $pattern, $exclude);
+   my $elems = @$filtered_files;
+   return unless ($elems > 0);
+
    # Get rules
    @{$self->{rules}} = split(/,\s*/,
                        $self->{cfg}->val('DEFAULT', 'rules'));
@@ -87,7 +93,7 @@ sub play_one {
 
    $self->init_augeas;
 
-   for my $file (@files) {
+   for my $file (@$filtered_files) {
       unless (-e $file) {
          $self->die_msg("No such file $file");
       }
@@ -97,6 +103,21 @@ sub play_one {
          $self->info_msg("Applying rule $rule to $file");
          $self->play_rule($rule, $file);
       }
+   }
+}
+
+sub play_one_recurse {
+   my ($self, @files) = @_;
+
+   if ($self->{recurse}) {
+     find (
+        {
+           wanted => sub { $self->play_one($File::Find::name) if -e },
+           no_chdir => 1,
+        },
+        @files);
+   } else {
+     $self->play_one(@files);
    }
 }
 
@@ -113,37 +134,12 @@ sub filter_files {
    return \@filtered_files;
 }
 
-sub tick {
-   my ($self) = @_;
-
-   $self->{tick}++;
-   my $tick = $self->{tick} % 4;
-
-   my $hourglass; 
-   print "\r";
-    
-   $hourglass = "|"  if ( $tick == 0 ); 
-   $hourglass = "/"  if ( $tick == 1 ); 
-   $hourglass = "-"  if ( $tick == 2 ); 
-   $hourglass = "\\" if ( $tick == 3 ); 
-
-   print "I: Recursively analyzing directories $hourglass\r";
-}
-
 sub play {
-   my ($self, @infiles) = @_;
-
-   my @files;
-   if ($self->{recurse}) {
-     find sub { push @files, $File::Find::name if -e; $self->tick if $self->{verbose} }, @infiles;
-     print "\n" if $self->{verbose};
-   } else {
-      @files = @infiles;
-   }
+   my ($self, @files) = @_;
    
    if ($self->{conffile}) {
       $self->load_conf($self->{conffile});
-      $self->play_one(@files);
+      $self->play_one_recurse(@files);
    } else {
       my $rulesdir = $self->{rulesdir};
       opendir (RULESDIR, $rulesdir)
@@ -152,16 +148,8 @@ sub play {
          next unless ($conffile =~ /.*\.ini$/);
          $self->{conffile} = "$rulesdir/$conffile";
          $self->load_conf($self->{conffile});
-         next unless ($self->{cfg}->val('DEFAULT', 'pattern'));
-         my $pattern = $self->{cfg}->val('DEFAULT', 'pattern');
-         my $exclude = $self->{cfg}->val('DEFAULT', 'exclude');
-         $exclude ||= '^$';
    
-         my $filtered_files = filter_files(\@files, $pattern, $exclude);
-         my $elems = @$filtered_files;
-         next unless ($elems > 0);
-   
-         $self->play_one(@$filtered_files);
+         $self->play_one_recurse(@files);
       }
       closedir(RULESDIR);
    }
