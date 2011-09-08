@@ -45,6 +45,8 @@ sub new {
 
    $self->{nofail} = $options{nofail};
 
+   $self->{exclude} = $options{exclude};
+
    # Init hourglass
    $self->{tick} = 0;
 
@@ -106,11 +108,18 @@ sub play_one {
 }
 
 sub filter_files {
-   my ($files, $pattern, $exclude) = @_;
+   my ($self, $files) = @_;
+
+   my $pattern = $self->{cfg}->val('DEFAULT', 'pattern');
+   my $exclude = $self->{cfg}->val('DEFAULT', 'exclude');
+   $exclude ||= '^$';
+   my $exclude_also = $self->{exclude};
+   $exclude_also ||= '^$';
 
    my @filtered_files;
    foreach my $file (@$files) {
-      if ($file =~ /^$pattern$/ && $file !~ /^$exclude$/) {
+      if ($file =~ /^$pattern$/ && $file !~ /^$exclude$/
+          && $file !~ /^$exclude_also$/) {
          push @filtered_files, $file;
       }
    }
@@ -158,11 +167,8 @@ sub play {
          $self->{conffile} = "$rulesdir/$conffile";
          $self->load_conf($self->{conffile});
          next unless ($self->{cfg}->val('DEFAULT', 'pattern'));
-         my $pattern = $self->{cfg}->val('DEFAULT', 'pattern');
-         my $exclude = $self->{cfg}->val('DEFAULT', 'exclude');
-         $exclude ||= '^$';
    
-         my $filtered_files = filter_files(\@files, $pattern, $exclude);
+         my $filtered_files = $self->filter_files(\@files);
          my $elems = @$filtered_files;
          next unless ($elems > 0);
    
