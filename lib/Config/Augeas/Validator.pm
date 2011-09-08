@@ -146,6 +146,7 @@ sub play {
 
    my @files;
    if ($self->{recurse}) {
+      printf "\033[?25l"; # hide cursor
       print colored ("I: Recursively analyzing directories  ", "blue bold") unless $self->{quiet};
       find sub {
          my $exclude = $self->{exclude};
@@ -155,6 +156,7 @@ sub play {
          $self->tick unless $self->{quiet}
          }, @infiles;
       print "\n" unless $self->{quiet};
+      printf "\033[?25h"; # restore cursor
    } else {
       @files = @infiles;
    }
