@@ -131,14 +131,13 @@ sub tick {
    my $tick = $self->{tick} % 4;
 
    my $hourglass; 
-   print "\b";
     
    $hourglass = "|"  if ( $tick == 0 ); 
    $hourglass = "/"  if ( $tick == 1 ); 
    $hourglass = "-"  if ( $tick == 2 ); 
    $hourglass = "\\" if ( $tick == 3 ); 
 
-   print colored ($hourglass, "blue bold");
+   print colored ($hourglass, "blue bold"),"\b";
 }
 
 sub play {
@@ -147,7 +146,7 @@ sub play {
    my @files;
    if ($self->{recurse}) {
       printf "\033[?25l"; # hide cursor
-      print colored ("I: Recursively analyzing directories  ", "blue bold") unless $self->{quiet};
+      print colored ("I: Recursively analyzing directories ", "blue bold") unless $self->{quiet};
       find sub {
          my $exclude = $self->{exclude};
          $exclude ||= '^$';
@@ -155,7 +154,7 @@ sub play {
             if(-e && $File::Find::name !~ /^$exclude$/);
          $self->tick unless $self->{quiet}
          }, @infiles;
-      print "\n" unless $self->{quiet};
+      print colored("[done]", "green bold"),"\n" unless $self->{quiet};
       printf "\033[?25h"; # restore cursor
    } else {
       @files = @infiles;
