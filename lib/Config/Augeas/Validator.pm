@@ -113,15 +113,11 @@ sub filter_files {
    my $pattern = $self->{cfg}->val('DEFAULT', 'pattern');
    my $exclude = $self->{cfg}->val('DEFAULT', 'exclude');
    $exclude ||= '^$';
-   my $exclude_also = $self->{exclude};
-   $exclude_also ||= '^$';
 
    my @filtered_files;
    foreach my $file (@$files) {
-      if ($file =~ /^$pattern$/ && $file !~ /^$exclude$/
-          && $file !~ /^$exclude_also$/) {
-         push @filtered_files, $file;
-      }
+      push @filtered_files, $file
+         if ($file =~ /^$pattern$/ && $file !~ /^$exclude$/);
    }
 
    return \@filtered_files;
@@ -149,11 +145,14 @@ sub play {
 
    my @files;
    if ($self->{recurse}) {
-     find sub {
-        push @files, $File::Find::name if -e;
-        $self->tick unless $self->{quiet}
-        }, @infiles;
-     print "\n" unless $self->{quiet};
+      find sub {
+         my $exclude = $self->{exclude};
+         $exclude ||= '^$';
+         push @files, $File::Find::name
+            if(-e && $File::Find::name !~ /^$exclude$/);
+         $self->tick unless $self->{quiet}
+         }, @infiles;
+      print "\n" unless $self->{quiet};
    } else {
       @files = @infiles;
    }
