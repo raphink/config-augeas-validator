@@ -40,6 +40,8 @@ sub new {
 
    $self->{recurse} = $options{recurse};
 
+   $self->{nofail} = $options{nofail};
+
    unless ($self->{conffile}) {
       assert_notempty('rulesdir', $self->{rulesdir});
    }
@@ -208,7 +210,7 @@ sub die_msg {
    my ($self, $msg) = @_;
 
    $self->err_msg($msg);
-   exit(1);
+   exit(1) unless $self->{nofail};
 }
 
 sub info_msg {

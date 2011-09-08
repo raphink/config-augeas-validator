@@ -34,6 +34,7 @@ my $conffile;
 my $rulesdir = "/etc/augeas-validator/rules.d";
 my $verbose = 0;
 my $recurse = 0;
+my $nofail = 0;
 my $man = 0;
 my $help = 0;
 
@@ -44,6 +45,7 @@ my $opts = GetOptions(
    "conf=s"     => \$conffile,
    "rulesdir=s" => \$rulesdir,
    "recursive"  => \$recurse,
+   "nofail"     => \$nofail,
 ) or pod2usage(2);
 pod2usage(1) if $help;
 pod2usage(-exitstatus => 0, -verbose => 2) if $man;
@@ -56,12 +58,14 @@ my $validator;
 if ($conffile) {
    $validator = Config::Augeas::Validator->new(conf => $conffile,
                                                recurse => $recurse,
+                                               nofail  => $nofail,
                                                verbose => $verbose);
    $validator->play(@files);
    exit $validator->{err};
 } else {
    $validator = Config::Augeas::Validator->new(rulesdir => $rulesdir,
                                                recurse => $recurse,
+                                               nofail  => $nofail,
                                                verbose => $verbose);
    $validator->play(@files);
    exit $validator->{err};
