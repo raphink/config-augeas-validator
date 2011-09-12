@@ -92,6 +92,7 @@ sub play_one {
 
    # Get return error code
    $self->{err_code} = $self->{cfg}->val('DEFAULT', 'err_code') || 1;
+   $self->{warn_code} = $self->{cfg}->val('DEFAULT', 'warn_code') || 2;
 
    $self->init_augeas;
 
@@ -322,6 +323,7 @@ sub assert {
 	    $self->{err} = $self->{err_code};
          } elsif ($level eq "warning") {
             $self->print_error('W', 'yellow bold', $file, $msg, $explanation);
+	    $self->{err} = $self->{warn_code};
          } else {
             $self->die_msg("Unknown level $level for assertion '$name'");
          }
