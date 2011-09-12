@@ -97,7 +97,7 @@ $SVNLOOK changed -t "$TXN" "$REPOS" | while read s f; do
    $SVNLOOK cat -t "$TXN" "$REPOS" "$f" > "$f"
 done
 
-/usr/bin/augeas-validator -d -re *
+/usr/bin/augeas-validator -re *
 [[ $? = 1 ]] && exit 1
 
 # All checks passed, so allow the commit.
