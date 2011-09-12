@@ -54,7 +54,7 @@ TMPTREE="$TMPDIR/files"
 
 if [ -d "$TMPDIR" ]; then
    cd "$TMPTREE"
-   /usr/bin/augeas-validator -re * || { rm -rf "$TMPDIR"; exit 1 }
+   /usr/bin/augeas-validator -re * || exit 1
    rm -rf "$TMPDIR"
 else
    echo "E: Could not find $TMPDIR, cannot run tests."
