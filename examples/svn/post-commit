@@ -47,19 +47,5 @@
 REPOS="$1"
 REV="$2"
 
-TMPDIR="/tmp/svn.$PPID"
-TMPTREE="$TMPDIR/files"
-
-#"$REPOS"/hooks/mailer.py commit "$REPOS" $REV "$REPOS"/mailer.conf
-
-if [ -d "$TMPDIR" ]; then
-   cd "$TMPTREE"
-   /usr/bin/augeas-validator -re * || exit 1
-   rm -rf "$TMPDIR"
-else
-   echo "E: Could not find $TMPDIR, cannot run tests."
-   exit 1
-fi
-
-
+/usr/bin/augeas-validator-svn-wrapper "post-commit" "$PPID" "$REPOS" "$REV" || exit 1
 

@@ -9,6 +9,7 @@ examples/rules.d/faiclassvar.ini
 examples/rules.d/faidiskconfig.ini
 examples/svn/pre-commit
 examples/svn/post-commit
+examples/svn/augeas-validator-svn-wrapper
 fakeroot/etc/sudoers
 fakeroot/etc/hosts
 lib/Config/Augeas/Validator.pm

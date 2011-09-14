@@ -73,34 +73,8 @@ SVNLOOK=/usr/bin/svnlook
 $SVNLOOK log -t "$TXN" "$REPOS" | \
    grep "[a-zA-Z0-9]" > /dev/null || exit 1
 
-# Exit on all errors.
-#set -e
-
-# Check that the author of this commit has the rights to perform
-# the commit on the files and directories being modified.
-#"$REPOS"/hooks/commit-access-control.pl "$REPOS" $TXN \
-#  "$REPOS"/hooks/commit-access-control.cfg
-
-
-TMPDIR="/tmp/svn.$PPID"
-TMPTREE="$TMPDIR/files"
-
-mkdir -p "$TMPTREE"
-cd "$TMPTREE"
-
-# Dump all files in $TMPTREE
-$SVNLOOK changed -t "$TXN" "$REPOS" | while read s f; do
-   [[ "x$s" = "xD" ]] && continue
-   [[ "x${f%/}" = "x$f" ]] || continue
-   dirname=$(dirname "$f")
-   mkdir -p "$dirname"
-   $SVNLOOK cat -t "$TXN" "$REPOS" "$f" > "$f"
-done
-
-/usr/bin/augeas-validator -re *
-[[ $? = 1 ]] && exit 1
+/usr/bin/augeas-validator-svn-wrapper "pre-commit" "$PPID" "$REPOS" "$TXN" || exit 1
 
 # All checks passed, so allow the commit.
 exit 0
-
 
