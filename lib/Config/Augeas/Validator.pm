@@ -25,7 +25,7 @@ use Config::IniFiles;
 use File::Find;
 use Term::ANSIColor;
 
-our $VERSION = '1.100';
+our $VERSION = '1.110';
 
 sub new {
    my $class = shift;
