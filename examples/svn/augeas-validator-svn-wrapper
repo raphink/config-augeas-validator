@@ -26,6 +26,10 @@ case $TYPE in
       $SVNLOOK changed -t "$TXN" "$REPOS" | while read s f; do
          [[ "x$s" = "xD" ]] && continue
          [[ "x${f%/}" = "x$f" ]] || continue
+         # Ignore symlinks
+         $SVNLOOK proplist -t "$TXN" "$REPOS" "$f" | \
+            grep -q "svn:special" && continue
+
          dirname=$(dirname "$f")
          mkdir -p "$dirname"
          $SVNLOOK cat -t "$TXN" "$REPOS" "$f" > "$f"
