@@ -11,6 +11,14 @@ TMPDIR="/tmp/svn.$SVNID"
 TMPTREE="$TMPDIR/files"
 
 SVNLOOK="/usr/bin/svnlook"
+EMERGENCY="NOCHECK"
+
+
+function msg_info() {
+   local msg="$1"
+   echo -e "\e[1;32m$msg\e[0m" >&2
+}
+
 
 case $TYPE in
    pre-commit)
@@ -18,7 +26,6 @@ case $TYPE in
          echo "E: pre-commit requires a TXN" >&2
          exit 1
       fi
-      echo "I: Creating $TMPTREE" >&2
       mkdir -p "$TMPTREE"
       cd "$TMPTREE"
 
@@ -29,19 +36,30 @@ case $TYPE in
          # Ignore symlinks
          $SVNLOOK proplist -t "$TXN" "$REPOS" "$f" | \
             grep -q "svn:special" && continue
-
          dirname=$(dirname "$f")
          mkdir -p "$dirname"
+
          $SVNLOOK cat -t "$TXN" "$REPOS" "$f" > "$f"
       done
 
+      # Emergency hook
+      $SVNLOOK propget --revprop -t "$TXN" "$REPOS" "svn:log" | \
+         grep "$EMERGENCY" && exit 0
+
       /usr/bin/augeas-validator -re *
-      [[ $? = 1 ]] && exit 1
+      if [[ $? = 1 ]]; then
+         msg_info "\nI: ==> Add the '$EMERGENCY' keyword to your commit message to bypass this check."
+         exit 1
+      fi
       ;;
    post-commit)
       if [ -d "$TMPDIR" ]; then
          cd "$TMPTREE"
-         /usr/bin/augeas-validator -re * || exit 1
+         /usr/bin/augeas-validator -re *
+         if [[ $? != 0 ]]; then
+            msg_info "\nI: Commit succeeded with warnings."
+            exit 1
+         fi
          rm -rf "$TMPDIR"
       else
          echo "E: Could not find $TMPDIR, cannot run tests." >&2
