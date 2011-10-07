@@ -24,6 +24,7 @@ my $builder = Module::Build->new(
     module_name => 'Config::Augeas::Validator',
     license     => 'lgpl',
     dist_author => 'Raphaël Pinson <raphink@cpan.org>',
+    dist_abstract => 'A generic configuration validator API',
     requires    => {
         'Class::Accessor'  => 0,
         'Config::Augeas'   => 0.801,
