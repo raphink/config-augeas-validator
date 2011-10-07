@@ -402,12 +402,6 @@ The B<DEFAULT> section is mandatory. It contains the following variables:
 
 =over 8
 
-=item B<rules>
-
-The ordered list of the rules to run, separated with commas, for example:
-
-C<rules=app_type, ai_bo_auth, dr_auth>
-
 =item B<lens>
 
 The name of the lens to use, for example:
@@ -463,6 +457,7 @@ C<value=1>
 The importance level of the test. Possible values are 'error' (default) and 'warning'.
 When set to 'error', a failed test will interrupt the processing and set the return code.
 When set to 'warning', a failed test will display a warning, continue, and have no effect on the return code.
+When set to 'ignore', the test is ignored and never run.
 
 C<level=warning>
 
