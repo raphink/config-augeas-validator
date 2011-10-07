@@ -55,7 +55,7 @@ sub new {
       assert_notempty('rulesdir', $self->{rulesdir});
    }
 
-   $self->{aug} = Config::Augeas->new( "no_load" => 1 );
+   $self->{aug} = Config::Augeas->new( "no_load" => 1, enable_span => 1 );
 
    # Instantiate general error
    $self->{err} = 0;
@@ -87,8 +87,7 @@ sub play_one {
    my ($self, @files) = @_;
 
    # Get rules
-   @{$self->{rules}} = split(/,\s*/,
-                       $self->{cfg}->val('DEFAULT', 'rules'));
+   @{$self->{rules}} = grep { !/DEFAULT/ } $self->{cfg}->Sections;
 
    # Get return error code
    $self->{err_code} = $self->{cfg}->val('DEFAULT', 'err_code') || 1;
@@ -298,6 +297,8 @@ sub play_rule {
    my $level = $self->{cfg}->val($rule, 'level');
    $level ||= 'error';
 
+   return if ($level eq "ignore");
+
    $self->assert($name, $type, $expr, $value, $file, $explanation, $level);
 }
 
@@ -305,9 +306,22 @@ sub play_rule {
 sub print_error {
    my ($self, $level, $color, $file, $msg, $explanation) = @_;
 
-   $self->print_msg("File $file", $level, $color);
    $self->print_msg($msg, $level, $color);
    print STDERR colored ("   $explanation.", $color),"\n";
+}
+
+
+sub line_num {
+   my ($file, $position) = @_;
+   open my $fh, '<', "$file" || die "E: Failed to open file: $!";
+
+   my $cur_pos = 0;
+
+   while ($cur_pos < $position) {
+       $cur_pos += length <$fh>;
+   }
+
+   return $.;
 }
 
 
@@ -317,16 +331,31 @@ sub assert {
    if ($type eq 'count') {
       my $count = $self->{aug}->count_match("$expr");
       if ($count != $value) {
-         my $msg = "Assertion '$name' of type $type returned $count for file $file, expected $value:";
+         my $mlevel;
+         my $mcolor;
          if ($level eq "error") {
-            $self->print_error('E', 'red bold', $file, $msg, $explanation);
+            $mlevel = 'E';
+            $mcolor = 'red bold';
 	    $self->{err} = $self->{err_code};
          } elsif ($level eq "warning") {
-            $self->print_error('W', 'yellow bold', $file, $msg, $explanation);
+            $mlevel = 'W';
+            $mcolor = 'yellow bold';
 	    $self->{err} = $self->{warn_code};
          } else {
             $self->die_msg("Unknown level $level for assertion '$name'");
          }
+         my $msg = "Assertion '$name' of type $type returned $count for file $file, expected $value.";
+
+         # Print span if value = 0
+         if ($value == 0) {
+            my @lines;
+            for my $node ($self->{aug}->match("$expr")) {
+               my $span_start = $self->{aug}->span("$node")->{span_start};
+               push @lines, line_num($file, $span_start);
+            }
+            $msg .= "\n   Found $count bad node(s) on line(s): ".join(', ', @lines).".";
+         }
+         $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
       }
    } else {
       $self->die_msg("Unknown type '$type'");

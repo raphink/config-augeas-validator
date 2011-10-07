@@ -26,7 +26,7 @@ my $builder = Module::Build->new(
     dist_author => 'Raphaël Pinson <raphink@cpan.org>',
     requires    => {
         'Class::Accessor'  => 0,
-        'Config::Augeas'   => 0,
+        'Config::Augeas'   => 0.801,
         'Config::IniFiles' => 0,
     },
     build_requires => {
