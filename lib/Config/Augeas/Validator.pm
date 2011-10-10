@@ -317,7 +317,7 @@ sub line_num {
 
    my $cur_pos = 0;
 
-   while ($cur_pos < $position) {
+   while (<$fh> and $cur_pos < $position) {
        $cur_pos += length <$fh>;
    }
 
