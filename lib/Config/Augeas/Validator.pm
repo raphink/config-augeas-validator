@@ -350,6 +350,7 @@ sub assert {
          if ($value == 0) {
             my @lines;
             for my $node ($self->{aug}->match("$expr")) {
+               # FIXME: Catch aug_span errors to prevent erroneous values
                my $span_start = $self->{aug}->span("$node")->{span_start};
                push @lines, line_num($file, $span_start+1);
             }
