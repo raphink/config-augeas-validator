@@ -140,6 +140,21 @@ sub tick {
    print colored ($hourglass, "blue bold"),"\b";
 }
 
+sub get_all_files {
+   my ($self) = @_;
+
+   my @files;
+
+   $self->{aug}->load();
+   for my $f ($self->{aug}->match("/augeas/files//path[. != '']")) {
+      my $p = $self->{aug}->get($f);
+      $p =~ s|^/files||;
+      push @files, $p;
+   }
+
+   return @files;
+}
+
 sub play {
    my ($self, @infiles) = @_;
 
@@ -156,7 +171,9 @@ sub play {
          }, @infiles;
       print colored("[done]", "green bold"),"\n" unless $self->{quiet};
       printf "\033[?25h"; # restore cursor
-   } else {
+   } elsif ($#infiles < 0) {
+      @files = $self->get_all_files();
+   }else {
       @files = @infiles;
    }
    
@@ -194,6 +211,7 @@ sub set_aug_file {
    my $lens = $self->{lens};
 
 
+   $aug->rm("/files");
    if ($aug->count_match("/augeas/load/$lens/lens") == 0) {
       # Lenses with no autoload xfm => bet on lns
       $aug->set("/augeas/load/$lens/lens", "$lens.lns");
