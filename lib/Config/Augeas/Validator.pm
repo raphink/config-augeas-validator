@@ -351,7 +351,7 @@ sub assert {
             my @lines;
             for my $node ($self->{aug}->match("$expr")) {
                my $span_start = $self->{aug}->span("$node")->{span_start};
-               push @lines, line_num($file, $span_start);
+               push @lines, line_num($file, $span_start+1);
             }
             $msg .= "\n   Found $count bad node(s) on line(s): ".join(', ', @lines).".";
          }
