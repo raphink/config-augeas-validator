@@ -317,8 +317,12 @@ sub line_num {
 
    my $cur_pos = 0;
 
-   while (<$fh> and $cur_pos < $position) {
-       $cur_pos += length <$fh>;
+   while (<$fh>) {
+       if ($cur_pos < $position) {
+          $cur_pos += length $_; 
+       } else {
+          last;
+       }
    }
 
    return $.;
