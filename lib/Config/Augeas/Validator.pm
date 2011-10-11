@@ -34,6 +34,8 @@ use constant AUGEAS_ENABLE      => "enable";
 use constant AUGEAS_DISABLE     => "disable";
 
 # Our constants
+use constant DEFAULT_RULESDIR => "/etc/augeas-validator/rules.d";
+
 use constant {
    CONF_DEFAULT_SECTION => "DEFAULT",
    CONF_ERR_CODE        => "err_code",
@@ -79,7 +81,7 @@ sub new {
 
    $self->{conffile} = $options{conf};
    $self->{rulesdir} = $options{rulesdir};
-   $self->{rulesdir} ||= "/etc/augeas-validator/rules.d";
+   $self->{rulesdir} ||= DEFAULT_RULESDIR;
 
    $self->{verbose} = $options{verbose};
    $self->{debug} = $options{debug};
