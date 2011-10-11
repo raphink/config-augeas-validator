@@ -1,7 +1,10 @@
-2011-10-07  Raphaël Pinson <raphink@cpan.org> v1.200
+2011-10-11  Raphaël Pinson <raphink@cpan.org> v1.200
 
 	* Remove rules parameter, add level=ignore;
-	* Add span to detect line numbers in files.
+	* Add span to detect line numbers in files;
+	* Cleanup code with constants;
+	* Analyze the whole system if no files are given;
+	* Add tags system.
 
 2011-09-13  Raphaël Pinson v1.110
 
