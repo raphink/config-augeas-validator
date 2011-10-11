@@ -467,8 +467,9 @@ sub assert {
             my @lines;
             for my $node ($self->{aug}->match("$expr")) {
                # FIXME: Catch aug_span errors to prevent erroneous values
+               # This could be simply done by checking span->{filename}
                my $span_start = $self->{aug}->span("$node")->{span_start};
-               push @lines, line_num($file, $span_start+1);
+               push @lines, line_num($file, $span_start);
             }
             $msg .= "\n   Found $count bad node(s) on line(s): ".join(', ', @lines).".";
          }
