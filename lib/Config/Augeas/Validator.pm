@@ -465,13 +465,18 @@ sub assert {
          # Print span if value = 0
          if ($value == 0) {
             my @lines;
+            my $got_span = 0;
             for my $node ($self->{aug}->match("$expr")) {
-               # FIXME: Catch aug_span errors to prevent erroneous values
-               # This could be simply done by checking span->{filename}
-               my $span_start = $self->{aug}->span("$node")->{span_start};
-               push @lines, line_num($file, $span_start);
+               if ($self->{aug}->span($node)->{filename}) {
+                  my $span_start = $self->{aug}->span($node)->{span_start};
+                  push @lines, line_num($file, $span_start);
+                  $got_span = 1;
+               } else {
+                  $self->msg_debug("No span information for node $node");
+               }
             }
-            $msg .= "\n   Found $count bad node(s) on line(s): ".join(', ', @lines).".";
+            $msg .= "\n   Found $count bad node(s) on line(s): ".join(', ', @lines)."."
+               if $got_span;
          }
          $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
       }
