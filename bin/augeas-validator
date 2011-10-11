@@ -38,6 +38,7 @@ my $quiet = 0;
 my $recurse = 0;
 my $exclude = '';
 my $nofail = 0;
+my $tags = [];
 my $man = 0;
 my $help = 0;
 
@@ -50,6 +51,7 @@ my $opts = GetOptions(
    "conf=s"     => \$conffile,
    "rulesdir=s" => \$rulesdir,
    "recursive"  => \$recurse,
+   "tag=s@"     => \$tags,
    "exclude=s"  => \$exclude,
    "nofail"     => \$nofail,
 ) or pod2usage(2);
@@ -66,6 +68,7 @@ if ($conffile) {
                                                recurse => $recurse,
                                                exclude => $exclude,
                                                nofail  => $nofail,
+                                               tags    => $tags,
                                                verbose => $verbose,
                                                debug   => $debug,
                                                quiet   => $quiet);
@@ -76,6 +79,7 @@ if ($conffile) {
                                                recurse => $recurse,
                                                exclude => $exclude,
                                                nofail  => $nofail,
+                                               tags    => $tags,
                                                verbose => $verbose,
                                                debug   => $debug,
                                                quiet   => $quiet);
@@ -102,6 +106,7 @@ __END__
       -conf <conffile> specify which configuration file to use
       -recursive recursively analyze the given directories
       -nofail do not stop when errors are found
+      -tag pass a tag to filter executed rules
       -exclude <pattern> exclude files by pattern
 
 =head1 OPTIONS
@@ -137,6 +142,10 @@ Analyze the given directories recursively and test each file found.
 =item B<-nofail>
 
 Do not stop when errors are found on a file.
+
+=item B<-tag>
+
+Pass a tag to filter executed rules. This option can be passed multiple times.
 
 =item B<-exclude pattern>
 

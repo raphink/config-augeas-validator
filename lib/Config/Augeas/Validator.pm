@@ -94,6 +94,9 @@ sub new {
 
    $self->{exclude} = $options{exclude};
 
+   $self->{tags} = $options{tags};
+   $self->{tags} ||= [];
+
    # System mode off by default
    $self->{syswide} = 0;
 
@@ -387,6 +390,26 @@ sub play_rule {
    $level ||= CONF_LEVEL_ERR;
 
    return if ($level eq CONF_LEVEL_IGNORE);
+
+   my @def_tags = @{$self->{tags}};
+   my $rule_tags_str = $self->{cfg}->val($rule, CONF_TAGS);
+   $rule_tags_str ||= '';
+   if ($#def_tags >= 0) {
+      $self->debug_msg("Defined tags for rule: $rule_tags_str");
+      my @rule_tags = split(',', $rule_tags_str);
+      my $tag_ok = 0;
+      for my $tag (@def_tags) {
+         if (grep(/^$tag$/, @rule_tags)) {
+            $self->debug_msg("Matched tag $tag for rule $rule");
+            $tag_ok = 1;
+            last;
+         }
+      }
+      unless ($tag_ok) {
+         $self->verbose_msg("Ignoring rule $rule since no tags matched");
+         return;
+      }
+   }
 
    $self->assert($name, $type, $expr, $value, $file, $explanation, $level);
 }
