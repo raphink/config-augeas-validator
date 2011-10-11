@@ -48,6 +48,9 @@ sub new {
 
    $self->{exclude} = $options{exclude};
 
+   # System mode off by default
+   $self->{syswide} = 0;
+
    # Init hourglass
    $self->{tick} = 0;
 
@@ -80,7 +83,10 @@ sub init_augeas {
    # Initialize Augeas
    $self->{lens} = $self->{cfg}->val('DEFAULT', 'lens');
    assert_notempty('lens', $self->{lens});
-   $self->{aug}->rm("/augeas/load/*[label() != \"$self->{lens}\"]");
+
+   if ($self->{syswide} != 1) {
+      $self->{aug}->rm("/augeas/load/*[label() != \"$self->{lens}\"]");
+   }
 }
 
 sub play_one {
@@ -111,14 +117,28 @@ sub play_one {
 sub filter_files {
    my ($self, $files) = @_;
 
-   my $pattern = $self->{cfg}->val('DEFAULT', 'pattern');
-   my $exclude = $self->{cfg}->val('DEFAULT', 'exclude');
-   $exclude ||= '^$';
-
    my @filtered_files;
-   foreach my $file (@$files) {
-      push @filtered_files, $file
-         if ($file =~ /^$pattern$/ && $file !~ /^$exclude$/);
+
+   if ($self->{syswide} == 1) {
+      my $lens = $self->{cfg}->val('DEFAULT', 'lens');
+      $self->debug_msg("Finding files for lens $lens");
+      my $sys_path = "/augeas/files//*[lens =~ regexp('@?${lens}(\.lns)?')]/path";
+      $self->debug_msg($sys_path);
+      for my $f ($self->{aug}->match($sys_path)) {
+         my $p = $self->{aug}->get($f);
+         $p =~ s|^/files||;
+         $self->debug_msg("Found file $p");
+         push @filtered_files, $p;
+      }
+   } else {
+      my $pattern = $self->{cfg}->val('DEFAULT', 'pattern');
+      my $exclude = $self->{cfg}->val('DEFAULT', 'exclude');
+      $exclude ||= '^$';
+
+      foreach my $file (@$files) {
+         push @filtered_files, $file
+            if ($file =~ /^$pattern$/ && $file !~ /^$exclude$/);
+      }
    }
 
    return \@filtered_files;
@@ -173,6 +193,7 @@ sub play {
       printf "\033[?25h"; # restore cursor
    } elsif ($#infiles < 0) {
       @files = $self->get_all_files();
+      $self->{syswide} = 1;
    }else {
       @files = @infiles;
    }
@@ -211,15 +232,19 @@ sub set_aug_file {
    my $lens = $self->{lens};
 
 
-   $aug->rm("/files");
-   if ($aug->count_match("/augeas/load/$lens/lens") == 0) {
-      # Lenses with no autoload xfm => bet on lns
-      $aug->set("/augeas/load/$lens/lens", "$lens.lns");
+   if ($self->{syswide} != 1) {
+      $aug->rm("/files");
+      if ($aug->count_match("/augeas/load/$lens/lens") == 0) {
+         # Lenses with no autoload xfm => bet on lns
+         $aug->set("/augeas/load/$lens/lens", "$lens.lns");
+      }
+
+      $aug->rm("/augeas/load/$lens/incl");
+      $aug->set("/augeas/load/$lens/incl", $absfile);
+      $aug->load;
    }
-   $aug->rm("/augeas/load/$lens/incl");
-   $aug->set("/augeas/load/$lens/incl", $absfile);
+
    $aug->defvar('file', "/files$absfile");
-   $aug->load;
 
    my $err_lens_path = "/augeas/load/$lens/error";
    my $err_lens = $aug->get($err_lens_path);
