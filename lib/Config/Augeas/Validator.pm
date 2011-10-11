@@ -27,6 +27,38 @@ use Term::ANSIColor;
 
 our $VERSION = '1.200';
 
+# Constants from Augeas' internal.h
+use constant AUGEAS_META_TREE   => "/augeas";
+use constant AUGEAS_SPAN_OPTION => AUGEAS_META_TREE."/span";
+use constant AUGEAS_ENABLE      => "enable";
+use constant AUGEAS_DISABLE     => "disable";
+
+# Our constants
+use constant {
+   CONF_DEFAULT_SECTION => "DEFAULT",
+   CONF_ERR_CODE        => "err_code",
+   CONF_WARN_CODE       => "warn_code",
+   CONF_LENS            => "lens",
+   CONF_PATTERN         => "pattern",
+   CONF_EXCLUDE         => "exclude",
+   CONF_TAGS            => "tags",
+   CONF_LEVEL_ERR       => "error",
+   CONF_LEVEL_WARN      => "warning",
+   CONF_LEVEL_IGNORE    => "ignore",
+   CONF_TYPE_COUNT      => "count",
+};
+ 
+
+# Colors
+use constant {
+   COLOR_INFO           => "blue bold",
+   COLOR_VERBOSE        => "blue bold",
+   COLOR_OK             => "green bold",
+   COLOR_ERR            => "red bold",
+   COLOR_WARN           => "yellow bold",
+};
+
+
 sub new {
    my $class = shift;
    my %options = @_;
@@ -72,8 +104,8 @@ sub load_conf {
    $self->debug_msg("Loading rule file $conffile");
 
    $self->{cfg} = new Config::IniFiles( -file => $conffile );
-   die "E:[$conffile]: Section 'DEFAULT' does not exist.\n"
-      unless $self->{cfg}->SectionExists('DEFAULT');
+   die "E:[$conffile]: Section ".CONF_DEFAULT_SECTION." does not exist.\n"
+      unless $self->{cfg}->SectionExists(CONF_DEFAULT_SECTION);
 }
 
 
@@ -81,11 +113,11 @@ sub init_augeas {
    my ($self) = @_;
 
    # Initialize Augeas
-   $self->{lens} = $self->{cfg}->val('DEFAULT', 'lens');
+   $self->{lens} = $self->{cfg}->val(CONF_DEFAULT_SECTION, CONF_LENS);
    assert_notempty('lens', $self->{lens});
 
    if ($self->{syswide} != 1) {
-      $self->{aug}->rm("/augeas/load/*[label() != \"$self->{lens}\"]");
+      $self->{aug}->rm(AUGEAS_META_TREE."/load/*[label() != \"$self->{lens}\"]");
    }
 }
 
@@ -96,8 +128,8 @@ sub play_one {
    @{$self->{rules}} = grep { !/DEFAULT/ } $self->{cfg}->Sections;
 
    # Get return error code
-   $self->{err_code} = $self->{cfg}->val('DEFAULT', 'err_code') || 1;
-   $self->{warn_code} = $self->{cfg}->val('DEFAULT', 'warn_code') || 2;
+   $self->{err_code} = $self->{cfg}->val(CONF_DEFAULT_SECTION, CONF_ERR_CODE) || 1;
+   $self->{warn_code} = $self->{cfg}->val(CONF_DEFAULT_SECTION, CONF_WARN_CODE) || 2;
 
    $self->init_augeas;
 
@@ -120,7 +152,7 @@ sub filter_files {
    my @filtered_files;
 
    if ($self->{syswide} == 1) {
-      my $lens = $self->{cfg}->val('DEFAULT', 'lens');
+      my $lens = $self->{cfg}->val(CONF_DEFAULT_SECTION, CONF_LENS);
       $self->debug_msg("Finding files for lens $lens");
       my $sys_path = "/augeas/files//*[lens =~ regexp('@?${lens}(\.lns)?')]/path";
       $self->debug_msg($sys_path);
@@ -131,8 +163,8 @@ sub filter_files {
          push @filtered_files, $p;
       }
    } else {
-      my $pattern = $self->{cfg}->val('DEFAULT', 'pattern');
-      my $exclude = $self->{cfg}->val('DEFAULT', 'exclude');
+      my $pattern = $self->{cfg}->val(CONF_DEFAULT_SECTION, CONF_PATTERN);
+      my $exclude = $self->{cfg}->val(CONF_DEFAULT_SECTION, CONF_EXCLUDE);
       $exclude ||= '^$';
 
       foreach my $file (@$files) {
@@ -157,7 +189,7 @@ sub tick {
    $hourglass = "-"  if ( $tick == 2 ); 
    $hourglass = "\\" if ( $tick == 3 ); 
 
-   print colored ($hourglass, "blue bold"),"\b";
+   print colored ($hourglass, COLOR_INFO),"\b";
 }
 
 sub get_all_files {
@@ -166,7 +198,7 @@ sub get_all_files {
    my @files;
 
    $self->{aug}->load();
-   for my $f ($self->{aug}->match("/augeas/files//path[. != '']")) {
+   for my $f ($self->{aug}->match(AUGEAS_META_TREE."/files//path[. != '']")) {
       my $p = $self->{aug}->get($f);
       $p =~ s|^/files||;
       push @files, $p;
@@ -181,7 +213,7 @@ sub play {
    my @files;
    if ($self->{recurse}) {
       printf "\033[?25l"; # hide cursor
-      print colored ("I: Recursively analyzing directories ", "blue bold") unless $self->{quiet};
+      print colored ("I: Recursively analyzing directories ", COLOR_INFO) unless $self->{quiet};
       find sub {
          my $exclude = $self->{exclude};
          $exclude ||= '^$';
@@ -189,7 +221,7 @@ sub play {
             if(-e && $File::Find::name !~ /^$exclude$/);
          $self->tick unless $self->{quiet}
          }, @infiles;
-      print colored("[done]", "green bold"),"\n" unless $self->{quiet};
+      print colored("[done]", COLOR_OK),"\n" unless $self->{quiet};
       printf "\033[?25h"; # restore cursor
    } elsif ($#infiles < 0) {
       @files = $self->get_all_files();
@@ -209,7 +241,7 @@ sub play {
          next unless ($conffile =~ /.*\.ini$/);
          $self->{conffile} = "$rulesdir/$conffile";
          $self->load_conf($self->{conffile});
-         next unless ($self->{cfg}->val('DEFAULT', 'pattern'));
+         next unless ($self->{cfg}->val(CONF_DEFAULT_SECTION, CONF_PATTERN));
    
          my $filtered_files = $self->filter_files(\@files);
          my $elems = @$filtered_files;
@@ -234,31 +266,31 @@ sub set_aug_file {
 
    if ($self->{syswide} != 1) {
       $aug->rm("/files");
-      if ($aug->count_match("/augeas/load/$lens/lens") == 0) {
+      if ($aug->count_match(AUGEAS_META_TREE."/load/$lens/lens") == 0) {
          # Lenses with no autoload xfm => bet on lns
-         $aug->set("/augeas/load/$lens/lens", "$lens.lns");
+         $aug->set(AUGEAS_META_TREE."/load/$lens/lens", "$lens.lns");
       }
 
-      $aug->rm("/augeas/load/$lens/incl");
-      $aug->set("/augeas/load/$lens/incl", $absfile);
+      $aug->rm(AUGEAS_META_TREE."/load/$lens/incl");
+      $aug->set(AUGEAS_META_TREE."/load/$lens/incl", $absfile);
       $aug->load;
    }
 
    $aug->defvar('file', "/files$absfile");
 
-   my $err_lens_path = "/augeas/load/$lens/error";
+   my $err_lens_path = AUGEAS_META_TREE."/load/$lens/error";
    my $err_lens = $aug->get($err_lens_path);
    if ($err_lens) {
       $self->err_msg("Failed to load lens $lens");
       $self->err_msg($aug->print($err_lens_path));
    }
 
-   my $err_path = "/augeas/files$absfile/error";
+   my $err_path = AUGEAS_META_TREE."/files$absfile/error";
    my $err = $aug->get($err_path);
    if ($err) {
-      my $err_line_path = "/augeas/files$absfile/error/line";
+      my $err_line_path = AUGEAS_META_TREE."/files$absfile/error/line";
       my $err_line = $aug->get($err_line_path);
-      my $err_char_path = "/augeas/files$absfile/error/char";
+      my $err_char_path = AUGEAS_META_TREE."/files$absfile/error/char";
       my $err_char = $aug->get($err_char_path);
 
       $self->err_msg("Failed to parse file $file");
@@ -283,7 +315,7 @@ sub print_msg {
    my ($self, $msg, $level, $color) = @_;
 
    $level ||= "I";
-   $color ||= "blue bold";
+   $color ||= COLOR_INFO;
 
    my $confname = $self->confname();
    print STDERR colored ("$level:[$confname]: $msg", $color),"\n";
@@ -292,7 +324,7 @@ sub print_msg {
 sub err_msg {
    my ($self, $msg) = @_;
 
-   $self->print_msg($msg, 'E', 'red bold');
+   $self->print_msg($msg, 'E', COLOR_ERR);
 }
 
 sub die_msg {
@@ -305,7 +337,7 @@ sub die_msg {
 sub verbose_msg {
    my ($self, $msg) = @_;
 
-   $self->print_msg($msg, 'V', 'blue bold') if $self->{verbose};
+   $self->print_msg($msg, 'V', COLOR_VERBOSE) if $self->{verbose};
 }
 
 sub debug_msg {
@@ -375,18 +407,18 @@ sub line_num {
 sub assert {
    my ($self, $name, $type, $expr, $value, $file, $explanation, $level) = @_;
 
-   if ($type eq 'count') {
+   if ($type eq CONF_TYPE_COUNT) {
       my $count = $self->{aug}->count_match("$expr");
       if ($count != $value) {
          my $mlevel;
          my $mcolor;
-         if ($level eq "error") {
+         if ($level eq CONF_LEVEL_ERR) {
             $mlevel = 'E';
-            $mcolor = 'red bold';
+            $mcolor = COLOR_ERR;
 	    $self->{err} = $self->{err_code};
-         } elsif ($level eq "warning") {
+         } elsif ($level eq CONF_LEVEL_WARN) {
             $mlevel = 'W';
-            $mcolor = 'yellow bold';
+            $mcolor = COLOR_WARN;
 	    $self->{err} = $self->{warn_code};
          } else {
             $self->die_msg("Unknown level $level for assertion '$name'");
