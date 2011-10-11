@@ -45,17 +45,29 @@ use constant {
    CONF_LEVEL_ERR       => "error",
    CONF_LEVEL_WARN      => "warning",
    CONF_LEVEL_IGNORE    => "ignore",
+   CONF_TYPE_NAME       => "name",
+   CONF_TYPE_TYPE       => "type",
    CONF_TYPE_COUNT      => "count",
+   CONF_TYPE_EXPR       => "expr",
+   CONF_TYPE_VALUE      => "value",
+   CONF_TYPE_EXPL       => "explanation",
+   CONF_TYPE_LEVEL      => "level",
 };
  
 
-# Colors
+# Output
 use constant {
    COLOR_INFO           => "blue bold",
    COLOR_VERBOSE        => "blue bold",
    COLOR_OK             => "green bold",
    COLOR_ERR            => "red bold",
    COLOR_WARN           => "yellow bold",
+   COLOR_DEBUG          => "blue",
+   MSG_ERR              => "E",
+   MSG_WARN             => "W",
+   MSG_INFO             => "I",
+   MSG_VERBOSE          => "V",
+   MSG_DEBUG            => "D",
 };
 
 
@@ -104,7 +116,7 @@ sub load_conf {
    $self->debug_msg("Loading rule file $conffile");
 
    $self->{cfg} = new Config::IniFiles( -file => $conffile );
-   die "E:[$conffile]: Section ".CONF_DEFAULT_SECTION." does not exist.\n"
+   die MSG_ERR.":[$conffile]: Section ".CONF_DEFAULT_SECTION." does not exist.\n"
       unless $self->{cfg}->SectionExists(CONF_DEFAULT_SECTION);
 }
 
@@ -154,7 +166,7 @@ sub filter_files {
    if ($self->{syswide} == 1) {
       my $lens = $self->{cfg}->val(CONF_DEFAULT_SECTION, CONF_LENS);
       $self->debug_msg("Finding files for lens $lens");
-      my $sys_path = "/augeas/files//*[lens =~ regexp('@?${lens}(\.lns)?')]/path";
+      my $sys_path = AUGEAS_META_TREE."/files//*[lens =~ regexp('@?${lens}(\.lns)?')]/path";
       $self->debug_msg($sys_path);
       for my $f ($self->{aug}->match($sys_path)) {
          my $p = $self->{aug}->get($f);
@@ -236,7 +248,7 @@ sub play {
    } else {
       my $rulesdir = $self->{rulesdir};
       opendir (RULESDIR, $rulesdir)
-         or die "E: Could not open rules directory $rulesdir: $!\n";
+         or die MSG_ERR.": Could not open rules directory $rulesdir: $!\n";
       while (my $conffile = readdir(RULESDIR)) {
          next unless ($conffile =~ /.*\.ini$/);
          $self->{conffile} = "$rulesdir/$conffile";
@@ -314,7 +326,7 @@ sub confname {
 sub print_msg {
    my ($self, $msg, $level, $color) = @_;
 
-   $level ||= "I";
+   $level ||= MSG_INFO;
    $color ||= COLOR_INFO;
 
    my $confname = $self->confname();
@@ -324,7 +336,7 @@ sub print_msg {
 sub err_msg {
    my ($self, $msg) = @_;
 
-   $self->print_msg($msg, 'E', COLOR_ERR);
+   $self->print_msg($msg, MSG_ERR, COLOR_ERR);
 }
 
 sub die_msg {
@@ -337,19 +349,19 @@ sub die_msg {
 sub verbose_msg {
    my ($self, $msg) = @_;
 
-   $self->print_msg($msg, 'V', COLOR_VERBOSE) if $self->{verbose};
+   $self->print_msg($msg, MSG_VERBOSE, COLOR_VERBOSE) if $self->{verbose};
 }
 
 sub debug_msg {
    my ($self, $msg) = @_;
 
-   $self->print_msg($msg, 'D', 'blue') if $self->{debug};
+   $self->print_msg($msg, MSG_DEBUG, COLOR_DEBUG) if $self->{debug};
 }
 
-sub info_msg {
+sub ok_msg {
    my ($self, $msg) = @_;
 
-   $self->print_msg($msg, 'I', 'green bold') unless $self->{quiet};
+   $self->print_msg($msg, MSG_INFO, COLOR_OK) unless $self->{quiet};
 }
 
 
@@ -359,20 +371,20 @@ sub play_rule {
    unless ($self->{cfg}->SectionExists($rule)) {
       $self->die_msg("Section '$rule' does not exist");
    }
-   my $name = $self->{cfg}->val($rule, 'name');
-   assert_notempty('name', $name);
-   my $type = $self->{cfg}->val($rule, 'type');
-   assert_notempty('type', $type);
-   my $expr = $self->{cfg}->val($rule, 'expr');
-   assert_notempty('expr', $expr);
-   my $value = $self->{cfg}->val($rule, 'value');
-   assert_notempty('value', $value);
-   my $explanation = $self->{cfg}->val($rule, 'explanation');
+   my $name = $self->{cfg}->val($rule, CONF_TYPE_NAME);
+   assert_notempty(CONF_TYPE_NAME, $name);
+   my $type = $self->{cfg}->val($rule, CONF_TYPE_TYPE);
+   assert_notempty(CONF_TYPE_TYPE, $type);
+   my $expr = $self->{cfg}->val($rule, CONF_TYPE_EXPR);
+   assert_notempty(CONF_TYPE_EXPR, $expr);
+   my $value = $self->{cfg}->val($rule, CONF_TYPE_VALUE);
+   assert_notempty(CONF_TYPE_VALUE, $value);
+   my $explanation = $self->{cfg}->val($rule, CONF_TYPE_EXPL);
    $explanation ||= '';
-   my $level = $self->{cfg}->val($rule, 'level');
-   $level ||= 'error';
+   my $level = $self->{cfg}->val($rule, CONF_TYPE_LEVEL);
+   $level ||= CONF_LEVEL_ERR;
 
-   return if ($level eq "ignore");
+   return if ($level eq CONF_LEVEL_IGNORE);
 
    $self->assert($name, $type, $expr, $value, $file, $explanation, $level);
 }
@@ -388,7 +400,7 @@ sub print_error {
 
 sub line_num {
    my ($file, $position) = @_;
-   open my $fh, '<', "$file" || die "E: Failed to open file: $!";
+   open my $fh, '<', "$file" || die MSG_ERR.": Failed to open file: $!";
 
    my $cur_pos = 0;
 
@@ -413,11 +425,11 @@ sub assert {
          my $mlevel;
          my $mcolor;
          if ($level eq CONF_LEVEL_ERR) {
-            $mlevel = 'E';
+            $mlevel = MSG_ERR;
             $mcolor = COLOR_ERR;
 	    $self->{err} = $self->{err_code};
          } elsif ($level eq CONF_LEVEL_WARN) {
-            $mlevel = 'W';
+            $mlevel = MSG_WARN;
             $mcolor = COLOR_WARN;
 	    $self->{err} = $self->{warn_code};
          } else {
@@ -446,7 +458,7 @@ sub assert {
 sub assert_notempty {
    my ($name, $var) = @_;
 
-   die "E: Variable '$name' should not be empty\n"
+   die MSG_ERR.": Variable '$name' should not be empty\n"
       unless (defined($var)); 
 }
 
