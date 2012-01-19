@@ -251,22 +251,24 @@ sub play {
       $self->load_conf($self->{conffile});
       $self->play_one(@files);
    } else {
-      my $rulesdir = $self->{rulesdir};
-      opendir (RULESDIR, $rulesdir)
-         or die MSG_ERR.": Could not open rules directory $rulesdir: $!\n";
-      while (my $conffile = readdir(RULESDIR)) {
-         next unless ($conffile =~ /.*\.ini$/);
-         $self->{conffile} = "$rulesdir/$conffile";
-         $self->load_conf($self->{conffile});
-         next unless ($self->{cfg}->val(CONF_DEFAULT_SECTION, CONF_PATTERN));
-   
-         my $filtered_files = $self->filter_files(\@files);
-         my $elems = @$filtered_files;
-         next unless ($elems > 0);
-   
-         $self->play_one(@$filtered_files);
+      my @rulesdirs = split(/:/, $self->{rulesdir});
+      foreach my $rulesdir (@rulesdirs) {
+	 opendir (RULESDIR, $rulesdir)
+	    or die MSG_ERR.": Could not open rules directory $rulesdir: $!\n";
+	 while (my $conffile = readdir(RULESDIR)) {
+	    next unless ($conffile =~ /.*\.ini$/);
+	    $self->{conffile} = "$rulesdir/$conffile";
+	    $self->load_conf($self->{conffile});
+	    next unless ($self->{cfg}->val(CONF_DEFAULT_SECTION, CONF_PATTERN));
+
+	    my $filtered_files = $self->filter_files(\@files);
+	    my $elems = @$filtered_files;
+	    next unless ($elems > 0);
+
+	    $self->play_one(@$filtered_files);
+	 }
+	 closedir(RULESDIR);
       }
-      closedir(RULESDIR);
    }
 }
 
@@ -472,7 +474,7 @@ sub assert {
                   push @lines, line_num($file, $span_start);
                   $got_span = 1;
                } else {
-                  $self->msg_debug("No span information for node $node");
+                  $self->debug_msg("No span information for node $node");
                }
             }
             $msg .= "\n   Found $count bad node(s) on line(s): ".join(', ', @lines)."."
@@ -513,6 +515,9 @@ __END__
 
    $validator->play(@files);
    exit $validator->{err};
+
+
+$rulesdir points to one or more directories of rules, separated by colons.
 
 
 =head1 CONFIGURATION
