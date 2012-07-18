@@ -1,0 +1,8 @@
+language: perl
+perl:
+  - "5.16"
+  - "5.14"
+  - "5.12"
+install:
+  - sudo apt-get update
+  - sudo apt-get install libaugeas-dev
