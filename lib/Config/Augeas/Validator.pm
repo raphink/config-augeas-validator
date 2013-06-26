@@ -25,7 +25,7 @@ use Config::IniFiles;
 use File::Find;
 use Term::ANSIColor;
 
-our $VERSION = '1.200';
+our $VERSION = '1.300';
 
 # Constants from Augeas' internal.h
 use constant AUGEAS_META_TREE   => "/augeas";
@@ -50,7 +50,9 @@ use constant {
    CONF_TYPE_NAME       => "name",
    CONF_TYPE_TYPE       => "type",
    CONF_TYPE_COUNT      => "count",
+   CONF_TYPE_SET        => "set",
    CONF_TYPE_EXPR       => "expr",
+   CONF_TYPE_KEY        => "key",
    CONF_TYPE_VALUE      => "value",
    CONF_TYPE_EXPL       => "explanation",
    CONF_TYPE_LEVEL      => "level",
@@ -80,6 +82,7 @@ sub new {
    my $self = __PACKAGE__->SUPER::new();
 
    $self->{conffile} = $options{conf};
+   $self->{loadpath} = $options{loadpath};
    $self->{rulesdir} = $options{rulesdir};
    $self->{rulesdir} ||= DEFAULT_RULESDIR;
 
@@ -107,7 +110,7 @@ sub new {
       assert_notempty('rulesdir', $self->{rulesdir});
    }
 
-   $self->{aug} = Config::Augeas->new( "no_load" => 1, enable_span => 1 );
+   $self->{aug} = Config::Augeas->new( "no_load" => 1, enable_span => 1, loadpath => $self->{loadpath} );
 
    # Instantiate general error
    $self->{err} = 0;
@@ -384,8 +387,6 @@ sub play_rule {
    assert_notempty(CONF_TYPE_TYPE, $type);
    my $expr = $self->{cfg}->val($rule, CONF_TYPE_EXPR);
    assert_notempty(CONF_TYPE_EXPR, $expr);
-   my $value = $self->{cfg}->val($rule, CONF_TYPE_VALUE);
-   assert_notempty(CONF_TYPE_VALUE, $value);
    my $explanation = $self->{cfg}->val($rule, CONF_TYPE_EXPL);
    $explanation ||= '';
    my $level = $self->{cfg}->val($rule, CONF_TYPE_LEVEL);
@@ -413,7 +414,7 @@ sub play_rule {
       }
    }
 
-   $self->assert($name, $type, $expr, $value, $file, $explanation, $level);
+   $self->assert($rule, $name, $type, $expr, $file, $explanation, $level);
 }
 
 
@@ -444,47 +445,17 @@ sub line_num {
 
 
 sub assert {
-   my ($self, $name, $type, $expr, $value, $file, $explanation, $level) = @_;
+   my ($self, $rule, $name, $type, $expr, $file, $explanation, $level) = @_;
+   my $assert_method;
 
    if ($type eq CONF_TYPE_COUNT) {
-      my $count = $self->{aug}->count_match("$expr");
-      if ($count != $value) {
-         my $mlevel;
-         my $mcolor;
-         if ($level eq CONF_LEVEL_ERR) {
-            $mlevel = MSG_ERR;
-            $mcolor = COLOR_ERR;
-	    $self->{err} = $self->{err_code};
-         } elsif ($level eq CONF_LEVEL_WARN) {
-            $mlevel = MSG_WARN;
-            $mcolor = COLOR_WARN;
-	    $self->{err} = $self->{warn_code};
-         } else {
-            $self->die_msg("Unknown level $level for assertion '$name'");
-         }
-         my $msg = "Assertion '$name' of type $type returned $count for file $file, expected $value.";
-
-         # Print span if value = 0
-         if ($value == 0) {
-            my @lines;
-            my $got_span = 0;
-            for my $node ($self->{aug}->match("$expr")) {
-               if ($self->{aug}->span($node)->{filename}) {
-                  my $span_start = $self->{aug}->span($node)->{span_start};
-                  push @lines, line_num($file, $span_start);
-                  $got_span = 1;
-               } else {
-                  $self->debug_msg("No span information for node $node");
-               }
-            }
-            $msg .= "\n   Found $count bad node(s) on line(s): ".join(', ', @lines)."."
-               if $got_span;
-         }
-         $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
-      }
+      $assert_method = 'assert_count';
+   } elsif($type eq CONF_TYPE_SET) {
+      $assert_method = 'assert_set';
    } else {
       $self->die_msg("Unknown type '$type'");
    }
+   $self->$assert_method($rule, $name, $type, $expr, $file, $explanation, $level);
 }
 
 
@@ -493,6 +464,108 @@ sub assert_notempty {
 
    die MSG_ERR.": Variable '$name' should not be empty\n"
       unless (defined($var)); 
+}
+
+sub assert_count {
+  my ($self, $rule, $name, $type, $expr, $file, $explanation, $level) = @_;
+
+  my $value = $self->{cfg}->val($rule, CONF_TYPE_VALUE);
+  assert_notempty(CONF_TYPE_VALUE, $value);
+
+  my $count = $self->{aug}->count_match("$expr");
+  if ($count != $value) {
+     my $mlevel;
+     my $mcolor;
+     if ($level eq CONF_LEVEL_ERR) {
+        $mlevel = MSG_ERR;
+        $mcolor = COLOR_ERR;
+        $self->{err} = $self->{err_code};
+     } elsif ($level eq CONF_LEVEL_WARN) {
+        $mlevel = MSG_WARN;
+        $mcolor = COLOR_WARN;
+        $self->{err} = $self->{warn_code};
+     } else {
+        $self->die_msg("Unknown level $level for assertion '$name'");
+     }
+     my $msg = "Assertion '$name' of type $type returned $count for file $file, expected $value.";
+
+     # Print span if value = 0
+     if ($value == 0) {
+        my @lines;
+        my $got_span = 0;
+        for my $node ($self->{aug}->match("$expr")) {
+           if ($self->{aug}->span($node)->{filename}) {
+              my $span_start = $self->{aug}->span($node)->{span_start};
+              push @lines, line_num($file, $span_start);
+              $got_span = 1;
+           } else {
+              $self->debug_msg("No span information for node $node");
+           }
+        }
+        $msg .= "\n   Found $count bad node(s) on line(s): ".join(', ', @lines)."."
+           if $got_span;
+     }
+     $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
+  }
+}
+
+sub assert_set {
+  my ($self, $rule, $name, $type, $expr, $file, $explanation, $level) = @_;
+
+  my $key = $self->{cfg}->val($rule, CONF_TYPE_KEY);
+  assert_notempty(CONF_TYPE_KEY, $key);
+  my $value = $self->{cfg}->val($rule, CONF_TYPE_VALUE);
+  assert_notempty(CONF_TYPE_VALUE, $value);
+
+  my $mlevel;
+  my $mcolor;
+  my $mcode;
+  if ($level eq CONF_LEVEL_ERR) {
+     $mlevel = MSG_ERR;
+     $mcolor = COLOR_ERR;
+     $mcode  = $self->{err_code};
+  } elsif ($level eq CONF_LEVEL_WARN) {
+     $mlevel = MSG_WARN;
+     $mcolor = COLOR_WARN;
+     $mcode  = $self->{warn_code};
+  } else {
+     $self->die_msg("Unknown level $level for assertion '$name'");
+  }
+
+  my @items = $self->{aug}->match("$expr");
+  unless (@items) {
+     $self->{err} = $mcode;
+     my $msg = "Assertion '$name' of type $type returned no match for file $file, expected $value.";
+     $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
+  }
+
+  for my $item_nb (0 .. $#items) {
+    my $item = $items[$item_nb];
+
+    my $mvalue = undef;
+    if ($item =~ m:$key/?$:) {
+      $mvalue = $self->{aug}->get($item);
+    } else {
+      $mvalue = $self->{aug}->get($item . '/' . $key);
+    }
+
+    if ((! defined $mvalue) or ($mvalue =~ m/^$/)) {
+      $self->debug_msg("Assertion '$name' of type $type found item #$item_nb with no $key, setting it to $value.");
+    } elsif ($mvalue ne $value) {
+      $self->{err} = $mcode;
+      my $msg = "Assertion '$name' of type $type found item #$item_nb with $key set to $mvalue, expected $value.";
+      $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
+    }
+
+    if ((!$mvalue) or ($mvalue ne $value)) {
+      unless ($self->{aug}->set($item . '/' . $key, $value)) {
+        $self->{err} = $mcode;
+        my $msg = "Assertion '$name' of type $type failed to set $key to $value for file on item #$item_nb.";
+        $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
+      }
+    }
+  }
+
 }
 
 
@@ -564,7 +637,7 @@ C<explanation=Check that application type is FOO or BAR>
 
 =item B<type>
 
-The type of rule. For now, B<Config::Augeas::Validator> only supports the B<count> type, which returns the count nodes matching B<expr>. Example:
+The type of rule. For now, B<Config::Augeas::Validator> only supports the B<count> type, which returns the count nodes matching B<expr> and the B<set> type, which checks that a B<key> is set to a B<value> for each node matching B<expr> and sets it for you if needed. Example:
 
 C<type=count>
 
@@ -574,9 +647,15 @@ The B<Augeas> expression for the rule. The C<$file> variable is the path to the 
 
 C<expr=$file/VirtualHost[#comment =~ regexp("^1# +((AI|BO)\+?|DR)$")]>
 
+=item B<key>
+
+The key to be set. Example:
+
+C<key=filename>
+
 =item B<value>
 
-The value expected for the test. For example, if using the count type, the number of matches expected for the expression. Example:
+The value expected for the test. For example, if using the count type, the number of matches expected for the expression. Another example with the set type is to give the value to set for the key. Example:
 
 C<value=1>
 

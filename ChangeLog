@@ -1,3 +1,10 @@
+2013-06-26  Francois Maillard <fmaillard@gmail.com> v1.300
+
+	* Refactorized assert method to a generic one
+	* Moved most code from assert to a new assert_count method 
+	* Add the assert_set method
+	* Add the option to set Config::Augeas loadpath value
+
 2011-10-11  Raphaël Pinson <raphink@cpan.org> v1.200
 
 	* Remove rules parameter, add level=ignore;
