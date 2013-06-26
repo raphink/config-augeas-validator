@@ -10,17 +10,6 @@
 (*                                                 *)
 
 
-(*
- Test me with:
-augparse -I . tests/test_xymonalerting.aug
-
- Run me with:
-AUGEAS_LENS_LIB="/home/fmaillard/augeas/lenses/" augeas-validator -rulesdir=/home/fmaillard/augeas/rules/ /home/fmaillard/repositories/CFxymon/branches/prod/configurations/pfs/pfs_supervision/prod/hobbit-alerts.d/ -re -verbose -verbose -e '.*/\.svn/.*'
-
-And have a look at:
-/repositories/masterfiles/cfdeputy/branches/prod/
-*)
-
 module XymonAlerting =
     autoload xfm
 
