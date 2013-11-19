@@ -41,7 +41,7 @@ my $builder = Module::Build->new(
     create_makefile_pl => 'traditional',
     meta_merge => {
        resources   => {
-           repository => 'https://code.launchpad.net/deput://github.com/raphink/Config--Augeas--Validator',
+           repository => 'https://github.com/raphink/config-augeas-validator',
        },
        keywords => [
           'configuration',
