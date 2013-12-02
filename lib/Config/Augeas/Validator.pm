@@ -534,12 +534,14 @@ sub assert_set {
      $self->die_msg("Unknown level $level for assertion '$name'");
   }
 
+  # Look for configuration items that match the given expression
   my @items = $self->{aug}->match("$expr");
   return 1 unless (@items);
 
   for my $item_nb (0 .. $#items) {
     my $item = $items[$item_nb];
 
+    # Find the current value for the 'key' setting
     my $mvalue = undef;
     if ($item =~ m:$key/?$:) {
       $mvalue = $self->{aug}->get($item);
@@ -547,18 +549,19 @@ sub assert_set {
       $mvalue = $self->{aug}->get($item . '/' . $key);
     }
 
+    # The value must be set
     if ((! defined $mvalue) or ($mvalue =~ m/^$/)) {
       $self->{err} = $mcode;
       my $msg = "Assertion '$name' of type $type found item #$item_nb with no $key, expected $value.";
       $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
-    } elsif ($mvalue ne $value) {
+    }
+    # The value must be the one we validate
+    elsif ($mvalue ne $value) {
       $self->{err} = $mcode;
       my $msg = "Assertion '$name' of type $type found item #$item_nb with $key set to $mvalue, expected $value.";
       $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
     }
   }
-
-  $self->{aug}->save();
 }
 
 
@@ -630,7 +633,7 @@ C<explanation=Check that application type is FOO or BAR>
 
 =item B<type>
 
-The type of rule. For now, B<Config::Augeas::Validator> only supports the B<count> type, which returns the count nodes matching B<expr> and the B<set> type, which checks that a B<key> is set to a B<value> for each node matching B<expr> and sets it for you if needed. Example:
+The type of rule. For now, B<Config::Augeas::Validator> only supports the B<count> type, which returns the count nodes matching B<expr> and the B<set> type, which checks that a B<key> is set to a B<value> for each node matching B<expr>. Example:
 
 C<type=count>
 
@@ -642,13 +645,13 @@ C<expr=$file/VirtualHost[#comment =~ regexp("^1# +((AI|BO)\+?|DR)$")]>
 
 =item B<key>
 
-The key to be set. Example:
+The key that should be set. Example:
 
 C<key=filename>
 
 =item B<value>
 
-The value expected for the test. For example, if using the count type, the number of matches expected for the expression. Another example with the set type is to give the value to set for the key. Example:
+The value expected for the test. For example, if using the count type, the number of matches expected for the expression. Another example with the set type is to give the value that should be set for the key. Example:
 
 C<value=1>
 
