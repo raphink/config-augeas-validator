@@ -516,6 +516,7 @@ sub assert_set {
   assert_notempty(CONF_TYPE_KEY, $key);
   my $value = $self->{cfg}->val($rule, CONF_TYPE_VALUE);
   assert_notempty(CONF_TYPE_VALUE, $value);
+  ($value = $file) =~ s:.*/:: if ($value eq '$file'); # value can be set to '$file'
 
   my $mlevel;
   my $mcolor;
@@ -533,11 +534,7 @@ sub assert_set {
   }
 
   my @items = $self->{aug}->match("$expr");
-  unless (@items) {
-     $self->{err} = $mcode;
-     my $msg = "Assertion '$name' of type $type returned no match for file $file, expected $value.";
-     $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
-  }
+  return 1 unless (@items);
 
   for my $item_nb (0 .. $#items) {
     my $item = $items[$item_nb];
@@ -550,22 +547,17 @@ sub assert_set {
     }
 
     if ((! defined $mvalue) or ($mvalue =~ m/^$/)) {
-      $self->debug_msg("Assertion '$name' of type $type found item #$item_nb with no $key, setting it to $value.");
+      $self->{err} = $mcode;
+      my $msg = "Assertion '$name' of type $type found item #$item_nb with no $key, expected $value.";
+      $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
     } elsif ($mvalue ne $value) {
       $self->{err} = $mcode;
       my $msg = "Assertion '$name' of type $type found item #$item_nb with $key set to $mvalue, expected $value.";
       $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
     }
-
-    if ((!$mvalue) or ($mvalue ne $value)) {
-      unless ($self->{aug}->set($item . '/' . $key, $value)) {
-        $self->{err} = $mcode;
-        my $msg = "Assertion '$name' of type $type failed to set $key to $value for file on item #$item_nb.";
-        $self->print_error($mlevel, $mcolor, $file, $msg, $explanation);
-      }
-    }
   }
 
+  $self->{aug}->save();
 }
 
 
