@@ -484,7 +484,7 @@ sub assert_count {
      } elsif ($level eq CONF_LEVEL_WARN) {
         $mlevel = MSG_WARN;
         $mcolor = COLOR_WARN;
-        $self->{err} = $self->{warn_code};
+        $self->{err} = $self->{warn_code} unless ($self->{err} == $self->{err_code});
      } else {
         $self->die_msg("Unknown level $level for assertion '$name'");
      }
