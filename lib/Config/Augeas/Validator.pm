@@ -279,7 +279,8 @@ sub play {
 sub set_aug_file {
    my ($self, $file) = @_;
 
-   my $absfile = `readlink -f $file`;
+   my $quottedfile = quotemeta($file);
+   my $absfile = `readlink -f $quottedfile`;
    chomp($absfile);
 
    my $aug = $self->{aug};
